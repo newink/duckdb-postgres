@@ -32,6 +32,12 @@ jobs:
         sudo apt-get update -y -qq
         sudo apt-get install -y -qq build-essential cmake ninja-build postgresql ccache python3
 
+    - name: Setup Postgres
+      run: |
+        sudo -u postgres createuser root -s
+        createdb
+        psql -c "SELECT 42"
+
     - uses: actions/checkout@v3
       with:
         fetch-depth: 0
@@ -47,17 +53,6 @@ jobs:
       uses: lukka/run-vcpkg@v11.1
       with:
         vcpkgGitCommitId: a42af01b72c28a8e1d7b48107b33e4f286a55ef6
-
-    - name: Setup Postgres
-      run: |
-        mkdir pgdata
-        sudo chown postgres pgdata
-        sudo -u postgres initdb -D pgdata
-        sudo -u postgres pg_ctl -D pgdata start
-        sleep 5
-        sudo -u postgres createuser root -s
-        createdb
-        psql -c "SELECT 42"
 
     - name: Build extension
       env:

@@ -34,6 +34,7 @@ jobs:
 
     - name: Setup Postgres
       run: |
+        sudo -u postgres pg_ctl start
         sudo -u postgres createuser root -s
         createdb
         psql -c "SELECT 42"

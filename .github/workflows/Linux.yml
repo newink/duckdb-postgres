@@ -40,6 +40,7 @@ jobs:
         password: 'postgres'
         database: 'postgres'
         port: '5432'
+        ssl: true
 
     - name: Test Postgres Setup
       run: |

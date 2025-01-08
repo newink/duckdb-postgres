@@ -134,26 +134,19 @@ if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/postgres)
 
   # Extract the PostgreSQL source code
   message(STATUS "Extracting PostgreSQL source code")
-  if(WIN32)
-    execute_process(
-      COMMAND tar -xzf ${CMAKE_CURRENT_SOURCE_DIR}/pg.tar.gz --strip-components 1 --force-local -C postgres
-      RESULT_VARIABLE PG_EXTRACT_RESULT
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-  else()
-    execute_process(
-      COMMAND tar -xzf ${CMAKE_CURRENT_SOURCE_DIR}/pg.tar.gz --strip-components 1 -C postgres
-      RESULT_VARIABLE PG_EXTRACT_RESULT
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-  endif()
+  file(ARCHIVE_EXTRACT INPUT ${CMAKE_CURRENT_SOURCE_DIR}/pg.tar.gz
+       DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/postgres_tmp)
+
+  # Move out of root directory
+  file(RENAME ${CMAKE_CURRENT_SOURCE_DIR}/postgres_tmp/postgres-REL_15_2
+            ${CMAKE_CURRENT_SOURCE_DIR}/postgres
+  )
+
+  # Remove the tmp directory
+  file(REMOVE_RECURSE ${CMAKE_CURRENT_SOURCE_DIR}/postgres_tmp)
 
   # Remove the downloaded tarball
   file(REMOVE ${CMAKE_CURRENT_SOURCE_DIR}/pg.tar.gz)
-
-  # Check if extraction was successful
-  if(NOT PG_EXTRACT_RESULT EQUAL 0)
-    file(REMOVE_RECURSE postgres)
-    message(FATAL_ERROR "Failed to extract PostgreSQL source code")
-  endif()
 
   # Configure the PostgreSQL source code
   message(STATUS "Configuring PostgreSQL source code")

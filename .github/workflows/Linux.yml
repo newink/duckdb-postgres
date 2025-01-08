@@ -58,6 +58,12 @@ jobs:
         cd duckdb
         git checkout ${{ matrix.duckdb_version }}
 
+    - name: Setup Ccache
+      uses: hendrikmuhs/ccache-action@main
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.ref == 'refs/heads/main' || github.repository != 'duckdb/postgres_scanner' }}
+
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v11.1
       with:

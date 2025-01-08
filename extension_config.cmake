@@ -7,5 +7,9 @@ duckdb_extension_load(postgres_scanner
     LOAD_TESTS
 )
 
+duckdb_extension_load(tpch)
+duckdb_extension_load(tpcds)
+duckdb_extension_load(json)
+
 # Any extra extensions that should be built
 # e.g.: duckdb_extension_load(json)

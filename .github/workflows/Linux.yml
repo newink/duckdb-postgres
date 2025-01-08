@@ -32,11 +32,17 @@ jobs:
         sudo apt-get update -y -qq
         sudo apt-get install -y -qq build-essential cmake ninja-build postgresql ccache python3
 
-    - name: Setup Postgres
+    - name: Setup PostgreSQL for Linux/macOS/Windows
+      uses: ikalnytskyi/action-setup-postgres@v7
+      with:
+          postgres-version: '15'
+          username: 'postgres'
+          password: 'postgres'
+          database: 'postgres'
+          port: '5432'
+
+    - name: Test Postgres Setup
       run: |
-        sudo -u postgres pg_ctl start
-        sudo -u postgres createuser root -s
-        createdb
         psql -c "SELECT 42"
 
     - uses: actions/checkout@v3

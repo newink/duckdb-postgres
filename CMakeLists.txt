@@ -114,16 +114,90 @@ add_subdirectory(src)
 
 prepend(LIBPG_SOURCES_FULLPATH ${CMAKE_CURRENT_SOURCE_DIR} ${LIBPG_SOURCES})
 
-if(EXISTS "postgres")
+if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/postgres)
+  file(MAKE_DIRECTORY postgres)
 
-else()
-  execute_process(COMMAND sh pgconfigure ${LIBPG_SOURCES_FULLPATH}
-                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+  # Download the PostgreSQL source code
+  message(STATUS "Downloading PostgreSQL source code")
+  file(DOWNLOAD
+    "https://github.com/postgres/postgres/archive/refs/tags/REL_15_2.tar.gz"
+    ${CMAKE_CURRENT_SOURCE_DIR}/pg.tar.gz
+    SHOW_PROGRESS
+    EXPECTED_MD5 615ef3fa75d19c46d2dafd6c66ddb5f6
+    STATUS PG_DOWNLOAD_RESULT)
+
+  if(NOT PG_DOWNLOAD_RESULT EQUAL 0)
+    file(REMOVE_RECURSE postgres)
+    file(REMOVE pg.tar.gz)
+    message(FATAL_ERROR "Failed to download PostgreSQL source code")
+  endif()
+
+  # Extract the PostgreSQL source code
+  message(STATUS "Extracting PostgreSQL source code")
+  execute_process(
+    COMMAND tar -xzf ${CMAKE_CURRENT_SOURCE_DIR}/pg.tar.gz --strip-components 1 -C postgres
+    RESULT_VARIABLE PG_EXTRACT_RESULT
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
+  # Remove the downloaded tarball
+  file(REMOVE ${CMAKE_CURRENT_SOURCE_DIR}/pg.tar.gz)
+
+  # Check if extraction was successful
+  if(NOT PG_EXTRACT_RESULT EQUAL 0)
+    file(REMOVE_RECURSE postgres)
+    message(FATAL_ERROR "Failed to extract PostgreSQL source code")
+  endif()
+
+  # Configure the PostgreSQL source code
+  message(STATUS "Configuring PostgreSQL source code")
+  if(WIN32)
+    # On windows, use the mkvcbuild.pl script to configure the source code
+    execute_process(
+      COMMAND perl mkvcbuild.pl
+      RESULT_VARIABLE PG_MKVCBUILD_RESULT
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/postgres/src/tools/msvc)
+
+    # Check if configuration was successful
+    if(NOT PG_MKVCBUILD_RESULT EQUAL 0)
+        file(REMOVE_RECURSE postgres)
+        message(FATAL_ERROR "Failed to configure PostgreSQL source code for windows")
+    endif()
+  else()
+    # On other platforms, use the configure script to configure the source code
+    set(ENV{CC} gcc)
+    set(ENV{CXX} g++)
+    execute_process(
+      COMMAND ./configure
+        --without-llvm
+        --without-icu
+        --without-tcl
+        --without-perl
+        --without-python
+        --without-gssapi
+        --without-pam
+        --without-bsd-auth
+        --without-ldap
+        --without-bonjour
+        --without-selinux
+        --without-systemd
+        --without-readline
+        --without-libxml
+        --without-libxslt
+        --without-zlib
+        --without-lz4
+        --without-openssl
+      RESULT_VARIABLE PG_CONFIGURE_RESULT
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/postgres
+    )
+    # Check if configuration was successful
+    if(NOT PG_CONFIGURE_RESULT EQUAL 0)
+      file(REMOVE_RECURSE postgres)
+      message(FATAL_ERROR "Failed to configure PostgreSQL source code")
+    endif ()
+  endif()
+  message(STATUS "Finished setting up PostgreSQL source code!")
 endif()
-add_custom_command(
-  OUTPUT ${LIBPG_SOURCES_FULLPATH}
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  COMMAND sh pgconfigure)
+
 
 set(PARAMETERS "-no-warnings")
 build_loadable_extension(${TARGET_NAME} ${PARAMETERS} ${ALL_OBJECT_FILES}

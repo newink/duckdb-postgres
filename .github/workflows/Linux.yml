@@ -37,7 +37,7 @@ jobs:
       with:
         postgres-version: '15'
         username: 'postgres'
-        password: ''
+        password: 'postgres'
         database: 'postgres'
         port: '5432'
         ssl: true

@@ -115,7 +115,6 @@ add_subdirectory(src)
 prepend(LIBPG_SOURCES_FULLPATH ${CMAKE_CURRENT_SOURCE_DIR} ${LIBPG_SOURCES})
 
 if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/postgres)
-  file(MAKE_DIRECTORY postgres)
 
   # Download the PostgreSQL source code
   message(STATUS "Downloading PostgreSQL source code")
@@ -127,7 +126,6 @@ if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/postgres)
     STATUS PG_DOWNLOAD_RESULT)
 
   if(NOT PG_DOWNLOAD_RESULT EQUAL 0)
-    file(REMOVE_RECURSE postgres)
     file(REMOVE pg.tar.gz)
     message(FATAL_ERROR "Failed to download PostgreSQL source code")
   endif()

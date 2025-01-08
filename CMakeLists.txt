@@ -135,7 +135,7 @@ if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/postgres)
   # Extract the PostgreSQL source code
   message(STATUS "Extracting PostgreSQL source code")
   execute_process(
-    COMMAND tar -xzf ${CMAKE_CURRENT_SOURCE_DIR}/pg.tar.gz --strip-components 1 -C postgres
+    COMMAND tar -xzf ${CMAKE_CURRENT_SOURCE_DIR}/pg.tar.gz --strip-components 1 --force-local -C postgres
     RESULT_VARIABLE PG_EXTRACT_RESULT
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 

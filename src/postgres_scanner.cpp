@@ -252,16 +252,12 @@ static void PostgresInitInternal(ClientContext &context, const PostgresBindData 
 	if (bind_data->table_name.empty()) {
 		D_ASSERT(!bind_data->sql.empty());
 		lstate.sql = StringUtil::Format(
-		    R"(
-	COPY (SELECT %s FROM (%s) AS __unnamed_subquery %s) TO STDOUT (FORMAT "binary");
-	)",
+		    R"(COPY (SELECT %s FROM (%s) AS __unnamed_subquery %s) TO STDOUT (FORMAT "binary");)",
 		    col_names, bind_data->sql, filter);
 
 	} else {
 		lstate.sql = StringUtil::Format(
-		    R"(
-	COPY (SELECT %s FROM %s.%s %s) TO STDOUT (FORMAT "binary");
-	)",
+		    R"(COPY (SELECT %s FROM %s.%s %s) TO STDOUT (FORMAT "binary");)",
 		    col_names, KeywordHelper::WriteQuoted(bind_data->schema_name, '"'),
 		    KeywordHelper::WriteQuoted(bind_data->table_name, '"'), filter);
 	}

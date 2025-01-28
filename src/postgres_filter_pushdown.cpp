@@ -46,7 +46,7 @@ string PostgresFilterPushdown::TransformFilter(string &column_name, TableFilter 
 		return CreateExpression(column_name, conjunction_filter.child_filters, "AND");
 	}
 	case TableFilterType::CONJUNCTION_OR: {
-		auto &conjunction_filter = filter.Cast<ConjunctionAndFilter>();
+		auto &conjunction_filter = filter.Cast<ConjunctionOrFilter>();
 		return CreateExpression(column_name, conjunction_filter.child_filters, "OR");
 	}
 	case TableFilterType::CONSTANT_COMPARISON: {

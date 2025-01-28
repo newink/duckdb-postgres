@@ -73,8 +73,8 @@ optional_ptr<CatalogEntry> PostgresSchemaEntry::CreateIndex(CatalogTransaction t
 string PGGetCreateViewSQL(PostgresSchemaEntry &schema, CreateViewInfo &info) {
 	string sql;
 	sql = "CREATE VIEW ";
-	sql += KeywordHelper::WriteOptionallyQuoted(schema.name) + ".";
-	sql += KeywordHelper::WriteOptionallyQuoted(info.view_name);
+	sql += PostgresUtils::QuotePostgresIdentifier(schema.name) + ".";
+	sql += PostgresUtils::QuotePostgresIdentifier(info.view_name);
 	sql += " ";
 	if (!info.aliases.empty()) {
 		sql += "(";
@@ -83,7 +83,7 @@ string PGGetCreateViewSQL(PostgresSchemaEntry &schema, CreateViewInfo &info) {
 				sql += ", ";
 			}
 			auto &alias = info.aliases[i];
-			sql += KeywordHelper::WriteOptionallyQuoted(alias);
+			sql += PostgresUtils::QuotePostgresIdentifier(alias);
 		}
 		sql += ") ";
 	}

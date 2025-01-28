@@ -19,7 +19,7 @@ string GetDeleteSQL(const PostgresTableEntry &table, const string &ctid_list) {
 	string result;
 	result = "DELETE FROM ";
 	result += KeywordHelper::WriteQuoted(table.schema.name, '"') + ".";
-	result += KeywordHelper::WriteOptionallyQuoted(table.name);
+	result += PostgresUtils::QuotePostgresIdentifier(table.name);
 	result += " WHERE ctid IN (" + ctid_list + ")";
 	return result;
 }

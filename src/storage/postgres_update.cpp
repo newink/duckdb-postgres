@@ -30,7 +30,7 @@ public:
 
 string CreateUpdateTable(const string &name, PostgresTableEntry &table, const vector<PhysicalIndex> &index) {
 	string result;
-	result = "CREATE LOCAL TEMPORARY TABLE " + KeywordHelper::WriteOptionallyQuoted(name);
+	result = "CREATE LOCAL TEMPORARY TABLE " + PostgresUtils::QuotePostgresIdentifier(name);
 	result += "(";
 	for (idx_t i = 0; i < index.size(); i++) {
 		if (i > 0) {
@@ -63,7 +63,7 @@ string GetUpdateSQL(const string &name, PostgresTableEntry &table, const vector<
 		result += ".";
 		result += KeywordHelper::WriteQuoted(column_name, '"');
 	}
-	result += " FROM " + KeywordHelper::WriteOptionallyQuoted(name);
+	result += " FROM " + PostgresUtils::QuotePostgresIdentifier(name);
 	result += " WHERE ";
 	result += KeywordHelper::WriteQuoted(table.name, '"');
 	result += ".ctid=__page_id_string::TID";

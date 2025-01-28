@@ -475,4 +475,8 @@ PostgresVersion PostgresUtils::ExtractPostgresVersion(const string &version_str)
 	return result;
 }
 
+string PostgresUtils::QuotePostgresIdentifier(const string &text) {
+	return KeywordHelper::WriteOptionallyQuoted(text, '"', false);
+}
+
 } // namespace duckdb

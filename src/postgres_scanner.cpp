@@ -150,6 +150,10 @@ void PostgresBindData::SetCatalog(PostgresCatalog &catalog) {
 	this->pg_catalog = &catalog;
 }
 
+void PostgresBindData::SetTable(PostgresTableEntry &table) {
+	this->pg_table = &table;
+}
+
 static unique_ptr<FunctionData> PostgresBind(ClientContext &context, TableFunctionBindInput &input,
                                              vector<LogicalType> &return_types, vector<string> &names) {
 	auto bind_data = make_uniq<PostgresBindData>();
@@ -536,6 +540,14 @@ static unique_ptr<FunctionData> PostgresScanDeserialize(Deserializer &deserializ
 	throw NotImplementedException("PostgresScanDeserialize");
 }
 
+static BindInfo PostgresGetBindInfo(const optional_ptr<FunctionData> bind_data_p) {
+	auto &bind_data = bind_data_p->Cast<PostgresBindData>();
+	auto table = bind_data.GetTable();
+	BindInfo info(ScanType::EXTERNAL);
+	info.table = bind_data.GetTable().get();
+	return info;
+}
+
 PostgresScanFunction::PostgresScanFunction()
     : TableFunction("postgres_scan", {LogicalType::VARCHAR, LogicalType::VARCHAR, LogicalType::VARCHAR}, PostgresScan,
                     PostgresBind, PostgresInitGlobalState, PostgresInitLocalState) {
@@ -545,6 +557,7 @@ PostgresScanFunction::PostgresScanFunction()
 	get_partition_data = PostgresGetPartitionData;
 	cardinality = PostgresScanCardinality;
 	table_scan_progress = PostgresScanProgress;
+	get_bind_info = PostgresGetBindInfo;
 	projection_pushdown = true;
 	global_initialization = TableFunctionInitialization::INITIALIZE_ON_SCHEDULE;
 }
@@ -558,6 +571,7 @@ PostgresScanFunctionFilterPushdown::PostgresScanFunctionFilterPushdown()
 	get_partition_data = PostgresGetPartitionData;
 	cardinality = PostgresScanCardinality;
 	table_scan_progress = PostgresScanProgress;
+	get_bind_info = PostgresGetBindInfo;
 	projection_pushdown = true;
 	filter_pushdown = true;
 	global_initialization = TableFunctionInitialization::INITIALIZE_ON_SCHEDULE;

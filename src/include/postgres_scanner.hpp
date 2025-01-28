@@ -45,8 +45,12 @@ public:
 	void SetTablePages(idx_t approx_num_pages);
 
 	void SetCatalog(PostgresCatalog &catalog);
+	void SetTable(PostgresTableEntry &table);
 	optional_ptr<PostgresCatalog> GetCatalog() const {
 		return pg_catalog;
+	}
+	optional_ptr<PostgresTableEntry> GetTable() const {
+		return pg_table;
 	}
 
 	unique_ptr<FunctionData> Copy() const override {
@@ -58,6 +62,7 @@ public:
 
 private:
 	optional_ptr<PostgresCatalog> pg_catalog;
+	optional_ptr<PostgresTableEntry> pg_table;
 };
 
 class PostgresAttachFunction : public TableFunction {

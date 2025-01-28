@@ -8,7 +8,9 @@ void PostgresConnection::BeginCopyFrom(PostgresBinaryReader &reader, const strin
 	if (!result || PQresultStatus(result) != PGRES_COPY_OUT) {
 		throw std::runtime_error("Failed to prepare COPY \"" + query + "\": " + string(PQresultErrorMessage(result)));
 	}
-	reader.Next();
+	if (!reader.Next()) {
+		throw IOException("Failed to fetch header for COPY \"%s\"\n* This could signal e.g. a statement timeout or other connection failure", query);
+	}
 	reader.CheckHeader();
 }
 

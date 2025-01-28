@@ -20,6 +20,9 @@ struct PostgresBinaryReader {
 	~PostgresBinaryReader() {
 		Reset();
 	}
+	PostgresConnection &GetConn() {
+		return con;
+	}
 
 	bool Next() {
 		Reset();

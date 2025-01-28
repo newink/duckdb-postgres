@@ -32,6 +32,10 @@ struct PostgresBinaryReader {
 
 		// len -1 signals end
 		if (len == -1) {
+			auto final_result = PQgetResult(con.GetConn());
+			if (!final_result || PQresultStatus(final_result) != PGRES_COMMAND_OK) {
+				throw IOException("Failed to fetch header for COPY: %s", string(PQresultErrorMessage(final_result)));
+			}
 			return false;
 		}
 

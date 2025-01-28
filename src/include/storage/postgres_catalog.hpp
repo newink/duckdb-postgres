@@ -31,6 +31,9 @@ public:
 	string GetCatalogType() override {
 		return "postgres";
 	}
+	string GetDefaultSchema() const override {
+		return default_schema.empty() ? "public" : default_schema;
+	}
 
 	optional_ptr<CatalogEntry> CreateSchema(CatalogTransaction transaction, CreateSchemaInfo &info) override;
 

@@ -74,3 +74,13 @@ SELECT geom::VARCHAR FROM s.my_points;
 ----
 POINT (1 1)
 POINT (2 2)
+
+# update
+statement ok
+UPDATE s.my_points SET geom=ST_Point(ST_X(geom::GEOMETRY) + 10, ST_Y(geom::GEOMETRY) + 10)
+
+query I
+SELECT geom::VARCHAR FROM s.my_points;
+----
+POINT (11 11)
+POINT (12 12)

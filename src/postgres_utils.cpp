@@ -21,6 +21,9 @@ PGconn *PostgresUtils::PGConnect(const string &dsn) {
 
 string PostgresUtils::TypeToString(const LogicalType &input) {
 	if (input.HasAlias()) {
+		if (StringUtil::CIEquals(input.GetAlias(), "wkb_blob")) {
+			return "GEOMETRY";
+		}
 		return input.GetAlias();
 	}
 	switch (input.id()) {

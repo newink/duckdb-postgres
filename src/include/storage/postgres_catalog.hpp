@@ -20,10 +20,11 @@ class PostgresSchemaEntry;
 
 class PostgresCatalog : public Catalog {
 public:
-	explicit PostgresCatalog(AttachedDatabase &db_p, const string &path, AccessMode access_mode, string schema_to_load);
+	explicit PostgresCatalog(AttachedDatabase &db_p, string connection_string, string attach_path, AccessMode access_mode, string schema_to_load);
 	~PostgresCatalog();
 
-	string path;
+	string connection_string;
+	string attach_path;
 	AccessMode access_mode;
 
 public:
@@ -31,6 +32,8 @@ public:
 	string GetCatalogType() override {
 		return "postgres";
 	}
+
+	static string GetConnectionString(ClientContext &context, const string &attach_path, string secret_name);
 
 	optional_ptr<CatalogEntry> CreateSchema(CatalogTransaction transaction, CreateSchemaInfo &info) override;
 

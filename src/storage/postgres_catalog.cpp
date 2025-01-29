@@ -6,12 +6,13 @@
 #include "duckdb/parser/parsed_data/drop_info.hpp"
 #include "duckdb/parser/parsed_data/create_schema_info.hpp"
 #include "duckdb/main/attached_database.hpp"
+#include "duckdb/main/secret/secret_manager.hpp"
 
 namespace duckdb {
 
-PostgresCatalog::PostgresCatalog(AttachedDatabase &db_p, const string &path, AccessMode access_mode,
+PostgresCatalog::PostgresCatalog(AttachedDatabase &db_p, string connection_string_p, string attach_path_p, AccessMode access_mode,
                                  string schema_to_load)
-    : Catalog(db_p), path(path), access_mode(access_mode), schemas(*this, schema_to_load), connection_pool(*this),
+    : Catalog(db_p), connection_string(std::move(connection_string_p)), attach_path(std::move(attach_path_p)), access_mode(access_mode), schemas(*this, schema_to_load), connection_pool(*this),
       default_schema(schema_to_load) {
 	if (default_schema.empty()) {
 		default_schema = "public";
@@ -25,6 +26,80 @@ PostgresCatalog::PostgresCatalog(AttachedDatabase &db_p, const string &path, Acc
 	auto connection = connection_pool.GetConnection();
 	this->version = connection.GetConnection().GetPostgresVersion();
 }
+
+string EscapeConnectionString(const string &input) {
+	string result = "'";
+	for (auto c : input) {
+		if (c == '\\') {
+			result += "\\\\";
+		} else if (c == '\'') {
+			result += "\\'";
+		} else {
+			result += c;
+		}
+	}
+	result += "'";
+	return result;
+}
+
+string AddConnectionOption(const KeyValueSecret &kv_secret, const string &name) {
+	Value input_val = kv_secret.TryGetValue(name);
+	if (input_val.IsNull()) {
+		// not provided
+		return string();
+	}
+	string result;
+	result += name;
+	result += "=";
+	result += EscapeConnectionString(input_val.ToString());
+	result += " ";
+	return result;
+}
+
+unique_ptr<SecretEntry> GetSecret(ClientContext &context, const string &secret_name) {
+	auto &secret_manager = SecretManager::Get(context);
+	auto transaction = CatalogTransaction::GetSystemCatalogTransaction(context);
+	// FIXME: this should be adjusted once the `GetSecretByName` API supports this use case
+	auto secret_entry = secret_manager.GetSecretByName(transaction, secret_name, "memory");
+	if (secret_entry) {
+		return secret_entry;
+	}
+	secret_entry = secret_manager.GetSecretByName(transaction, secret_name, "local_file");
+	if (secret_entry) {
+		return secret_entry;
+	}
+	return nullptr;
+}
+
+string PostgresCatalog::GetConnectionString(ClientContext &context, const string &attach_path, string secret_name) {
+	// if no secret is specified we default to the unnamed postgres secret, if it exists
+	string connection_string = attach_path;
+	bool explicit_secret = !secret_name.empty();
+	if (!explicit_secret) {
+		// look up settings from the default unnamed postgres secret if none is provided
+		secret_name = "__default_postgres";
+	}
+
+	auto secret_entry = GetSecret(context, secret_name);
+	if (secret_entry) {
+		// secret found - read data
+		const auto &kv_secret = dynamic_cast<const KeyValueSecret &>(*secret_entry->secret);
+		string new_connection_info;
+
+		new_connection_info += AddConnectionOption(kv_secret, "user");
+		new_connection_info += AddConnectionOption(kv_secret, "password");
+		new_connection_info += AddConnectionOption(kv_secret, "host");
+		new_connection_info += AddConnectionOption(kv_secret, "port");
+		new_connection_info += AddConnectionOption(kv_secret, "dbname");
+
+		connection_string = new_connection_info + connection_string;
+	} else if (explicit_secret) {
+		// secret not found and one was explicitly provided - throw an error
+		throw BinderException("Secret with name \"%s\" not found", secret_name);
+	}
+	return connection_string;
+}
+
 
 PostgresCatalog::~PostgresCatalog() = default;
 
@@ -85,7 +160,7 @@ bool PostgresCatalog::InMemory() {
 }
 
 string PostgresCatalog::GetDBPath() {
-	return path;
+	return attach_path;
 }
 
 DatabaseSize PostgresCatalog::GetDatabaseSize(ClientContext &context) {

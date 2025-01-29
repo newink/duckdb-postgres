@@ -55,6 +55,13 @@ SELECT geom::VARCHAR FROM s.my_points;
 POINT (1 1)
 POINT (2 2)
 
+# make sure Postgres itself can read the values
+query I
+SELECT * FROM postgres_query(s, 'SELECT ST_AsText(geom) FROM my_points')
+----
+POINT(1 1)
+POINT(2 2)
+
 # re-attach
 statement ok
 DETACH s

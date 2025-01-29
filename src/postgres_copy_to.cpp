@@ -260,8 +260,13 @@ void CastBlobToPostgres(ClientContext &context, Vector &input, Vector &result, i
 	}
 }
 
+void CastGeometryToPostgres(ClientContext &context, Vector &input, Vector &result, idx_t size) {
+	VectorOperations::Cast(context, input, result, size);
+}
+
 void CastToPostgresVarchar(ClientContext &context, Vector &input, Vector &result, idx_t size) {
-	switch (input.GetType().id()) {
+	auto &type = input.GetType();
+	switch (type.id()) {
 	case LogicalTypeId::LIST:
 		CastListToPostgresArray(context, input, result, size);
 		break;
@@ -269,6 +274,10 @@ void CastToPostgresVarchar(ClientContext &context, Vector &input, Vector &result
 		CastStructToPostgres(context, input, result, size);
 		break;
 	case LogicalTypeId::BLOB:
+		if (type.HasAlias() && StringUtil::CIEquals(type.GetAlias(), "wkb_blob")) {
+			CastGeometryToPostgres(context, input, result, size);
+			break;
+		}
 		CastBlobToPostgres(context, input, result, size);
 		break;
 	default:

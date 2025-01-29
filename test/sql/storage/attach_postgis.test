@@ -10,9 +10,6 @@ require-env POSTGRES_TEST_DATABASE_AVAILABLE
 require-env SPATIAL_EXTENSION
 
 statement ok
-LOAD '${SPATIAL_EXTENSION}'
-
-statement ok
 PRAGMA enable_verification
 
 statement ok
@@ -21,6 +18,15 @@ ATTACH 'dbname=postgres' AS s (TYPE POSTGRES);
 # make sure PostGIS is installed
 statement ok
 SELECT * FROM postgres_query(s, 'SELECT PostGIS_Version()')
+
+# spatial not loaded yet
+statement error
+CREATE OR REPLACE TABLE s.my_points(geom GEOMETRY);
+----
+spatial
+
+statement ok
+LOAD '${SPATIAL_EXTENSION}'
 
 # create a table
 statement ok

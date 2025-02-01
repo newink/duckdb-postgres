@@ -35,6 +35,28 @@ string PostgresFilterPushdown::TransformComparision(ExpressionType type) {
 	}
 }
 
+string TransformBlob(const string &val) {
+	char const HEX_DIGITS[] = "0123456789ABCDEF";
+
+	string result = "'\\x";
+	for(idx_t i = 0; i < val.size(); i++) {
+		uint8_t byte_val = static_cast<uint8_t>(val[i]);
+		result += HEX_DIGITS[(byte_val >> 4) & 0xf];
+		result += HEX_DIGITS[byte_val & 0xf];
+	}
+	result += "'::BYTEA";
+	return result;
+}
+
+string TransformLiteral(const Value &val) {
+	switch (val.type().id()) {
+	case LogicalTypeId::BLOB:
+		return TransformBlob(StringValue::Get(val));
+	default:
+		return KeywordHelper::WriteQuoted(val.ToString());
+	}
+}
+
 string PostgresFilterPushdown::TransformFilter(string &column_name, TableFilter &filter) {
 	switch (filter.filter_type) {
 	case TableFilterType::IS_NULL:
@@ -51,7 +73,7 @@ string PostgresFilterPushdown::TransformFilter(string &column_name, TableFilter 
 	}
 	case TableFilterType::CONSTANT_COMPARISON: {
 		auto &constant_filter = filter.Cast<ConstantFilter>();
-		auto constant_string = KeywordHelper::WriteQuoted(constant_filter.constant.ToString());
+		auto constant_string = TransformLiteral(constant_filter.constant);
 		auto operator_string = TransformComparision(constant_filter.comparison_type);
 		return StringUtil::Format("%s %s %s", column_name, operator_string, constant_string);
 	}
@@ -72,7 +94,7 @@ string PostgresFilterPushdown::TransformFilter(string &column_name, TableFilter 
 			if (!in_list.empty()) {
 				in_list += ", ";
 			}
-			in_list += KeywordHelper::WriteQuoted(val.ToString());
+			in_list += TransformLiteral(val);
 		}
 		return column_name + " IN (" + in_list + ")";
 	}

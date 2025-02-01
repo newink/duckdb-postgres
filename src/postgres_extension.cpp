@@ -174,8 +174,8 @@ static void LoadInternal(DatabaseInstance &db) {
 	config.AddExtensionOption("pg_connection_cache", "Whether or not to use the connection cache", LogicalType::BOOLEAN,
 	                          Value::BOOLEAN(true), PostgresConnectionPool::PostgresSetConnectionCache);
 	config.AddExtensionOption("pg_experimental_filter_pushdown",
-	                          "Whether or not to use filter pushdown (currently experimental)", LogicalType::BOOLEAN,
-	                          Value::BOOLEAN(false));
+	                          "Whether or not to use filter pushdown", LogicalType::BOOLEAN,
+	                          Value::BOOLEAN(true));
 	config.AddExtensionOption("pg_null_byte_replacement",
 	                          "When writing NULL bytes to Postgres, replace them with the given character",
 	                          LogicalType::VARCHAR, Value(), SetPostgresNullByteReplacement);

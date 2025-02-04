@@ -20,7 +20,8 @@ class PostgresSchemaEntry;
 
 class PostgresCatalog : public Catalog {
 public:
-	explicit PostgresCatalog(AttachedDatabase &db_p, string connection_string, string attach_path, AccessMode access_mode, string schema_to_load);
+	explicit PostgresCatalog(AttachedDatabase &db_p, string connection_string, string attach_path,
+	                         AccessMode access_mode, string schema_to_load);
 	~PostgresCatalog();
 
 	string connection_string;

@@ -12,7 +12,7 @@ static unique_ptr<Catalog> PostgresAttach(StorageExtensionInfo *storage_info, Cl
                                           AccessMode access_mode) {
 	auto &config = DBConfig::GetConfig(context);
 	if (!config.options.enable_external_access) {
-		throw PermissionException("Attaching Postgres databases is disabled by configuration");
+		throw PermissionException("Attaching Postgres databases is disabled through configuration");
 	}
 	string attach_path = info.path;
 

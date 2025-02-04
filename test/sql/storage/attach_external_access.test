@@ -12,4 +12,4 @@ SET enable_external_access=false
 statement error
 ATTACH 'dbname=postgresscanner' AS simple (TYPE POSTGRES)
 ----
-Attaching external databases is disabled through configuration
+disabled through configuration

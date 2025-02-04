@@ -118,7 +118,8 @@ if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/postgres)
 
   # Download the PostgreSQL source code
   message(STATUS "Downloading PostgreSQL source code")
-  file(DOWNLOAD
+  file(
+    DOWNLOAD
     "https://github.com/postgres/postgres/archive/refs/tags/REL_15_2.tar.gz"
     ${CMAKE_CURRENT_SOURCE_DIR}/pg.tar.gz
     SHOW_PROGRESS
@@ -132,13 +133,12 @@ if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/postgres)
 
   # Extract the PostgreSQL source code
   message(STATUS "Extracting PostgreSQL source code")
-  file(ARCHIVE_EXTRACT INPUT ${CMAKE_CURRENT_SOURCE_DIR}/pg.tar.gz
-       DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/postgres_tmp)
+  file(ARCHIVE_EXTRACT INPUT ${CMAKE_CURRENT_SOURCE_DIR}/pg.tar.gz DESTINATION
+       ${CMAKE_CURRENT_SOURCE_DIR}/postgres_tmp)
 
   # Move out of root directory
   file(RENAME ${CMAKE_CURRENT_SOURCE_DIR}/postgres_tmp/postgres-REL_15_2
-            ${CMAKE_CURRENT_SOURCE_DIR}/postgres
-  )
+       ${CMAKE_CURRENT_SOURCE_DIR}/postgres)
 
   # Remove the tmp directory
   file(REMOVE_RECURSE ${CMAKE_CURRENT_SOURCE_DIR}/postgres_tmp)
@@ -157,45 +157,31 @@ if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/postgres)
 
     # Check if configuration was successful
     if(NOT PG_MKVCBUILD_RESULT EQUAL 0)
-        file(REMOVE_RECURSE postgres)
-        message(FATAL_ERROR "Failed to configure PostgreSQL source code for windows")
+      file(REMOVE_RECURSE postgres)
+      message(
+        FATAL_ERROR "Failed to configure PostgreSQL source code for windows")
     endif()
   else()
     # On other platforms, use the configure script to configure the source code
     set(ENV{CC} gcc)
     set(ENV{CXX} g++)
     execute_process(
-      COMMAND ./configure
-        --without-llvm
-        --without-icu
-        --without-tcl
-        --without-perl
-        --without-python
-        --without-gssapi
-        --without-pam
-        --without-bsd-auth
-        --without-ldap
-        --without-bonjour
-        --without-selinux
-        --without-systemd
-        --without-readline
-        --without-libxml
-        --without-libxslt
-        --without-zlib
-        --without-lz4
-        --without-openssl
+      COMMAND
+        ./configure --without-llvm --without-icu --without-tcl --without-perl
+        --without-python --without-gssapi --without-pam --without-bsd-auth
+        --without-ldap --without-bonjour --without-selinux --without-systemd
+        --without-readline --without-libxml --without-libxslt --without-zlib
+        --without-lz4 --without-openssl
       RESULT_VARIABLE PG_CONFIGURE_RESULT
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/postgres
-    )
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/postgres)
     # Check if configuration was successful
     if(NOT PG_CONFIGURE_RESULT EQUAL 0)
       file(REMOVE_RECURSE postgres)
       message(FATAL_ERROR "Failed to configure PostgreSQL source code")
-    endif ()
+    endif()
   endif()
   message(STATUS "Finished setting up PostgreSQL source code!")
 endif()
-
 
 set(PARAMETERS "-no-warnings")
 build_loadable_extension(${TARGET_NAME} ${PARAMETERS} ${ALL_OBJECT_FILES}

@@ -11,7 +11,13 @@ string PostgresFilterPushdown::CreateExpression(string &column_name, vector<uniq
                                                 string op) {
 	vector<string> filter_entries;
 	for (auto &filter : filters) {
-		filter_entries.push_back(TransformFilter(column_name, *filter));
+		auto filter_str = TransformFilter(column_name, *filter);
+		if (!filter_str.empty()) {
+			filter_entries.push_back(std::move(filter_str));
+		}
+	}
+	if (filter_entries.empty()) {
+		return string();
 	}
 	return "(" + StringUtil::Join(filter_entries, " " + op + " ") + ")";
 }
@@ -98,6 +104,8 @@ string PostgresFilterPushdown::TransformFilter(string &column_name, TableFilter 
 		}
 		return column_name + " IN (" + in_list + ")";
 	}
+	case TableFilterType::DYNAMIC_FILTER:
+		return string();
 	default:
 		throw InternalException("Unsupported table filter type");
 	}
@@ -111,13 +119,17 @@ string PostgresFilterPushdown::TransformFilters(const vector<column_t> &column_i
 	}
 	string result;
 	for (auto &entry : filters->filters) {
+		auto column_name = KeywordHelper::WriteQuoted(names[column_ids[entry.first]], '"');
+		auto &filter = *entry.second;
+		auto filter_text = TransformFilter(column_name, filter);
+
+		if (filter_text.empty()) {
+			continue;
+		}
 		if (!result.empty()) {
 			result += " AND ";
 		}
-		auto column_name = KeywordHelper::WriteQuoted(names[column_ids[entry.first]], '"');
-		auto &filter = *entry.second;
-
-		result += TransformFilter(column_name, filter);
+		result += filter_text;
 	}
 	return result;
 }

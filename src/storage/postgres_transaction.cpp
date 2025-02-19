@@ -68,6 +68,17 @@ unique_ptr<PostgresResult> PostgresTransaction::Query(const string &query) {
 	return con.Query(query);
 }
 
+unique_ptr<PostgresResult> PostgresTransaction::QueryWithoutTransaction(const string &query) {
+	auto &con = GetConnectionRaw();
+	if (transaction_state == PostgresTransactionState::TRANSACTION_STARTED) {
+		Commit();
+		string transaction_start = GetBeginTransactionQuery(access_mode);
+		transaction_start += ";\n";
+		return con.Query(query + transaction_start);;
+	}
+	return con.Query(query);
+}
+
 vector<unique_ptr<PostgresResult>> PostgresTransaction::ExecuteQueries(const string &queries) {
 	auto &con = GetConnectionRaw();
 	if (transaction_state == PostgresTransactionState::TRANSACTION_NOT_YET_STARTED) {

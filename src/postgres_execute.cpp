@@ -10,14 +10,14 @@
 namespace duckdb {
 
 struct PGExecuteBindData : public TableFunctionData {
-	explicit PGExecuteBindData(PostgresCatalog &pg_catalog, string query_p, bool transaction)
-	    : pg_catalog(pg_catalog), query(std::move(query_p)), transaction(transaction) {
+	explicit PGExecuteBindData(PostgresCatalog &pg_catalog, string query_p, bool use_transaction)
+	    : pg_catalog(pg_catalog), query(std::move(query_p)), use_transaction(use_transaction) {
 	}
 
 	bool finished = false;
 	PostgresCatalog &pg_catalog;
 	string query;
-	bool transaction = true;
+	bool use_transaction = true;
 };
 
 static duckdb::unique_ptr<FunctionData> PGExecuteBind(ClientContext &context, TableFunctionBindInput &input,
@@ -38,14 +38,14 @@ static duckdb::unique_ptr<FunctionData> PGExecuteBind(ClientContext &context, Ta
 	}
 	auto &pg_catalog = catalog.Cast<PostgresCatalog>();
 
-	bool transaction = true;
+	bool use_transaction = true;
 	for (auto &kv : input.named_parameters) {
-		if (kv.first == "transaction") {
-			transaction = BooleanValue::Get(kv.second);
+		if (kv.first == "use_transaction") {
+			use_transaction = BooleanValue::Get(kv.second);
 		}
 	}
 
-	return make_uniq<PGExecuteBindData>(pg_catalog, input.inputs[1].GetValue<string>(), transaction);
+	return make_uniq<PGExecuteBindData>(pg_catalog, input.inputs[1].GetValue<string>(), use_transaction);
 }
 
 static void PGExecuteFunction(ClientContext &context, TableFunctionInput &data_p, DataChunk &output) {
@@ -54,7 +54,7 @@ static void PGExecuteFunction(ClientContext &context, TableFunctionInput &data_p
 		return;
 	}
 	auto &transaction = Transaction::Get(context, data.pg_catalog).Cast<PostgresTransaction>();
-	if (data.transaction) {
+	if (data.use_transaction) {
 		transaction.Query(data.query);
 	} else {
 		transaction.QueryWithoutTransaction(data.query);
@@ -66,7 +66,7 @@ static void PGExecuteFunction(ClientContext &context, TableFunctionInput &data_p
 PostgresExecuteFunction::PostgresExecuteFunction()
     : TableFunction("postgres_execute", {LogicalType::VARCHAR, LogicalType::VARCHAR}, PGExecuteFunction,
                     PGExecuteBind) {
-	    named_parameters["transaction"] = LogicalType::BOOLEAN;
+	    named_parameters["use_transaction"] = LogicalType::BOOLEAN;
 }
 
 } // namespace duckdb

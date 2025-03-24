@@ -71,10 +71,10 @@ unique_ptr<PostgresResult> PostgresTransaction::Query(const string &query) {
 unique_ptr<PostgresResult> PostgresTransaction::QueryWithoutTransaction(const string &query) {
 	auto &con = GetConnectionRaw();
 	if (transaction_state == PostgresTransactionState::TRANSACTION_STARTED) {
-		Commit();
-		string transaction_start = GetBeginTransactionQuery(access_mode);
-		transaction_start += ";\n";
-		return con.Query(query + transaction_start);;
+		throw std::runtime_error("Execution without a Transaction is not possible if a Transaction already started");
+	}
+	if (access_mode == AccessMode::READ_ONLY) {
+		throw std::runtime_error("Execution without a Transaction is not possible in Read Only Mode");
 	}
 	return con.Query(query);
 }

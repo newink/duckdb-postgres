@@ -12,17 +12,17 @@ PRAGMA enable_verification
 statement ok
 ATTACH 'dbname=postgresscanner' AS s (TYPE POSTGRES)
 
-I
+query I
 CALL postgres_query('s', 'SELECT 1')
 ----
 1
 
-I
+query I
 CALL postgres_query('s', 'SELECT 1', use_transaction=true)
 ----
 1
 
-I
+query I
 CALL postgres_query('s', 'SELECT 1', use_transaction=false)
 ----
 1
@@ -30,7 +30,7 @@ CALL postgres_query('s', 'SELECT 1', use_transaction=false)
 statement ok
 BEGIN;
 
-I
+query I
 CALL postgres_query('s', 'SELECT 1')
 ----
 1
@@ -43,7 +43,7 @@ Invalid Error: Execution without a Transaction is not possible if a Transaction 
 statement ok
 ROLLBACK
 
-I
+query I
 CALL postgres_query('s', 'SELECT 1', use_transaction=false)
 ----
 1

@@ -28,7 +28,9 @@ public:
 	void Commit();
 	void Rollback();
 
+	PostgresConnection &GetConnectionWithoutTransaction();
 	PostgresConnection &GetConnection();
+
 	string GetDSN();
 	unique_ptr<PostgresResult> Query(const string &query);
 	unique_ptr<PostgresResult> QueryWithoutTransaction(const string &query);
@@ -43,7 +45,6 @@ private:
 	AccessMode access_mode;
 	string temporary_schema;
 
-private:
 	//! Retrieves the connection **without** starting a transaction if none is active
 	PostgresConnection &GetConnectionRaw();
 };

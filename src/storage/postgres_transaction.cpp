@@ -39,6 +39,16 @@ static string GetBeginTransactionQuery(AccessMode access_mode) {
 	return result;
 }
 
+PostgresConnection &PostgresTransaction::GetConnectionWithoutTransaction() {
+	if (transaction_state == PostgresTransactionState::TRANSACTION_STARTED) {
+		throw std::runtime_error("Execution without a Transaction is not possible if a Transaction already started");
+	}
+	if (access_mode == AccessMode::READ_ONLY) {
+		throw std::runtime_error("Execution without a Transaction is not possible in Read Only Mode");
+	}
+	return connection.GetConnection();
+}
+
 PostgresConnection &PostgresTransaction::GetConnection() {
 	auto &con = GetConnectionRaw();
 	if (transaction_state == PostgresTransactionState::TRANSACTION_NOT_YET_STARTED) {

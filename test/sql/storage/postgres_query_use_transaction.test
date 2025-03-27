@@ -49,7 +49,7 @@ CALL postgres_query('s', 'SELECT 1', use_transaction=false)
 1
 
 statement ok
-ATTACH 'dbname=postgresscanner' AS s (TYPE POSTGRES, READ_ONLY)
+ATTACH 'dbname=postgresscanner' AS s2 (TYPE POSTGRES, READ_ONLY)
 
 statement error
 CALL postgres_query('s2', 'SELECT 1', use_transaction=false)

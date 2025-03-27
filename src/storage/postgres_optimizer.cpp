@@ -24,13 +24,11 @@ static void OptimizePostgresScanLimitPushdown(unique_ptr<LogicalOperator> &op) {
 		}
 
 		if (child.get().type != LogicalOperatorType::LOGICAL_GET) {
-			OptimizePostgresScanLimitPushdown(op->children[0]);
 			return;
 		}
 
 		auto &get = child.get().Cast<LogicalGet>();
 		if (!PostgresCatalog::IsPostgresScan(get.function.name)) {
-			OptimizePostgresScanLimitPushdown(op->children[0]);
 			return;
 		}
 
@@ -39,8 +37,7 @@ static void OptimizePostgresScanLimitPushdown(unique_ptr<LogicalOperator> &op) {
 		case LimitNodeType::UNSET:
 			break;
 		default:
-		    // not a constant or unset limit
-			OptimizePostgresScanLimitPushdown(op->children[0]);
+			// not a constant or unset limit
 			return;
 		}
 		switch (limit.offset_val.Type()) {
@@ -48,8 +45,7 @@ static void OptimizePostgresScanLimitPushdown(unique_ptr<LogicalOperator> &op) {
 		case LimitNodeType::UNSET:
 			break;
 		default:
-		    // not a constant or unset offset
-			OptimizePostgresScanLimitPushdown(op->children[0]);
+			// not a constant or unset offset
 			return;
 		}
 
@@ -63,12 +59,8 @@ static void OptimizePostgresScanLimitPushdown(unique_ptr<LogicalOperator> &op) {
 			generated_limit_clause += " OFFSET " + to_string(limit.offset_val.GetConstantValue());
 		}
 
-		if (!generated_limit_clause.empty()) {
-			bind_data.limit = generated_limit_clause;
-
-			op = std::move(op->children[0]);
-			return;
-		}
+		op = std::move(op->children[0]);
+		return;
 	}
 
 	for (auto &child : op->children) {

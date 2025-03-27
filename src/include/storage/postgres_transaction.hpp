@@ -45,6 +45,7 @@ private:
 	AccessMode access_mode;
 	string temporary_schema;
 
+private:
 	//! Retrieves the connection **without** starting a transaction if none is active
 	PostgresConnection &GetConnectionRaw();
 };

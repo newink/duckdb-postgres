@@ -1,4 +1,6 @@
 #!/bin/bash
+set -e
+
 echo "
 CREATE SCHEMA tpch; 
 CREATE SCHEMA tpcds;

@@ -119,17 +119,16 @@ InsertionOrderPreservingMap<string> PostgresDelete::ParamsToString() const {
 //===--------------------------------------------------------------------===//
 // Plan
 //===--------------------------------------------------------------------===//
-unique_ptr<PhysicalOperator> PostgresCatalog::PlanDelete(ClientContext &context, LogicalDelete &op,
-                                                         unique_ptr<PhysicalOperator> plan) {
+PhysicalOperator &PostgresCatalog::PlanDelete(ClientContext &context, PhysicalPlanGenerator &planner, LogicalDelete &op, PhysicalOperator &plan) {
 	if (op.return_chunk) {
 		throw BinderException("RETURNING clause not yet supported for deletion of a Postgres table");
 	}
 	auto &bound_ref = op.expressions[0]->Cast<BoundReferenceExpression>();
-	PostgresCatalog::MaterializePostgresScans(*plan);
+	PostgresCatalog::MaterializePostgresScans(plan);
 
-	auto insert = make_uniq<PostgresDelete>(op, op.table, bound_ref.index);
-	insert->children.push_back(std::move(plan));
-	return std::move(insert);
+	auto &delete_op = planner.Make<PostgresDelete>(op, op.table, bound_ref.index);
+    delete_op.children.push_back(plan);
+	return delete_op;
 }
 
 } // namespace duckdb

@@ -46,7 +46,7 @@ query I
 SELECT * FROM my_composite_tbl
 ----
 {'id': 42, 'name': test 123}
-{'id': 43, 'name': )}
+{'id': 43, 'name': ')'}
 {'id': 100, 'name': xxx}
 
 query II
@@ -148,5 +148,5 @@ query I
 SELECT * FROM my_composite_tbl
 ----
 {'id': 42, 'children': [{'id': 43, 'names': [a, b]}]}
-{'id': 10, 'children': [{'id': 20, 'names': [a, , '{}[]()";,\n\\, b]}, {'id': 30, 'names': [(, """""""""""", )]}]}
-{'id': 10, 'children': [{'id': 20, 'names': [a, b]}, {'id': 30, 'names': NULL}, {'id': 40, 'names': [}, ", NULL]}, {'id': 50, 'names': [, a, )]}, {'id': NULL, 'names': NULL}]}
+{'id': 10, 'children': [{'id': 20, 'names': [a, '', '\'{}[]()";,\\n\\\\', b]}, {'id': 30, 'names': ['(', '""""""""""""', ')']}]}
+{'id': 10, 'children': [{'id': 20, 'names': [a, b]}, {'id': 30, 'names': NULL}, {'id': 40, 'names': ['}', '"', NULL]}, {'id': 50, 'names': ['', a, ')']}, {'id': NULL, 'names': NULL}]}

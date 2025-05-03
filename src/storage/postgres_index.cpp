@@ -4,6 +4,7 @@
 #include "duckdb/planner/operator/logical_extension_operator.hpp"
 #include "duckdb/catalog/catalog_entry/table_catalog_entry.hpp"
 #include "duckdb/parser/parsed_data/drop_info.hpp"
+#include "duckdb/planner/operator/logical_create_index.hpp"
 
 namespace duckdb {
 
@@ -72,8 +73,11 @@ public:
 unique_ptr<LogicalOperator> PostgresCatalog::BindCreateIndex(Binder &binder, CreateStatement &stmt,
                                                              TableCatalogEntry &table,
                                                              unique_ptr<LogicalOperator> plan) {
-	return make_uniq<LogicalPostgresCreateIndex>(unique_ptr_cast<CreateInfo, CreateIndexInfo>(std::move(stmt.info)),
-	                                             table);
+	// FIXME: this is a work-around for the CreateIndexInfo we are getting here not being fully bound
+	// this needs to be fixed upstream (eventually)
+	auto result = Catalog::BindCreateIndex(binder, stmt, table, std::move(plan));
+	auto &index_create = result->Cast<LogicalCreateIndex>();
+	return make_uniq<LogicalPostgresCreateIndex>(std::move(index_create.info), table);
 }
 
 } // namespace duckdb

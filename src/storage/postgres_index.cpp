@@ -5,6 +5,9 @@
 #include "duckdb/catalog/catalog_entry/table_catalog_entry.hpp"
 #include "duckdb/parser/parsed_data/drop_info.hpp"
 #include "duckdb/planner/operator/logical_create_index.hpp"
+#include "duckdb/parser/parsed_data/create_index_info.hpp"
+#include "duckdb/planner/expression_binder/index_binder.hpp"
+#include "duckdb/planner/operator/logical_get.hpp"
 
 namespace duckdb {
 
@@ -75,9 +78,19 @@ unique_ptr<LogicalOperator> PostgresCatalog::BindCreateIndex(Binder &binder, Cre
                                                              unique_ptr<LogicalOperator> plan) {
 	// FIXME: this is a work-around for the CreateIndexInfo we are getting here not being fully bound
 	// this needs to be fixed upstream (eventually)
-	auto result = Catalog::BindCreateIndex(binder, stmt, table, std::move(plan));
-	auto &index_create = result->Cast<LogicalCreateIndex>();
-	return make_uniq<LogicalPostgresCreateIndex>(std::move(index_create.info), table);
+	auto create_index_info = unique_ptr_cast<CreateInfo, CreateIndexInfo>(std::move(stmt.info));
+	IndexBinder index_binder(binder, binder.context);
+
+	// Bind the index expressions.
+	vector<unique_ptr<Expression>> expressions;
+	for (auto &expr : create_index_info->expressions) {
+		expressions.push_back(index_binder.Bind(expr));
+	}
+
+	auto &get = plan->Cast<LogicalGet>();
+	index_binder.InitCreateIndexInfo(get, *create_index_info, table.schema.name);
+
+	return make_uniq<LogicalPostgresCreateIndex>(std::move(create_index_info), table);
 }
 
 } // namespace duckdb

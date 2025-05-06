@@ -33,13 +33,13 @@ SELECT UNNEST(float_col), ROUND(UNNEST(double_col), 1) FROM pg_numarraytypes
 query IIIIIIII
 select * from pg_bytearraytypes;
 ----
-[a, Z, NULL]	[a, Z, NULL]	[aaaa, ZZZZ, NULL]	[aaaa, ZZZZ, NULL]	[aaaa, ZZZZ, NULL]	[x00, xff, NULL]	[{"a":42}, NULL]	[a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11, NULL]
+[a, Z, NULL]	[a, Z, NULL]	[aaaa, ZZZZ, NULL]	[aaaa, ZZZZ, NULL]	[aaaa, ZZZZ, NULL]	[x00, xff, NULL]	['{"a":42}', NULL]	[a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11, NULL]
 NULL	NULL	NULL	NULL	NULL	NULL	NULL	NULL
 
 query IIIII
 select * from pg_datearraytypes;
 ----
-[2019-11-26, 2021-03-01, NULL]	[14:42:43, 12:45:01, NULL]	[14:42:43+05:45, 12:45:01+05:45, NULL]	[2019-11-26 12:45:01, 2021-03-01 12:45:01, NULL]	[2019-11-26 07:00:01+00, 2021-03-01 07:00:01+00, NULL]
+[2019-11-26, 2021-03-01, NULL]	['14:42:43', '12:45:01', NULL]	['14:42:43+05:45', '12:45:01+05:45', NULL]	['2019-11-26 12:45:01', '2021-03-01 12:45:01', NULL]	['2019-11-26 07:00:01+00', '2021-03-01 07:00:01+00', NULL]
 NULL	NULL	NULL	NULL	NULL
 
 statement ok

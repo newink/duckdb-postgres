@@ -139,21 +139,21 @@ SELECT * FROM lists
 []
 NULL
 [NULL, string 123, s]
-[]
-[ 0 ]
-[, ]
-[a, ]
-[a,   , b]
-[a, }, b]
-[a, ", b]
-[a, '{}[]()";,\n\\, b]
-[[]]
-[[, ]]
-[[a, ]]
-[[a,   , b]]
-[[a, }, b]]
-[[a, ", b]]
-[[a, '{}[]()";,\n\\, b], [a, '{}[]()";,\n\\, b]]
+['']
+[' 0 ']
+['', '']
+[a, '']
+[a, '  ', b]
+[a, '}', b]
+[a, '"', b]
+[a, '\'{}[]()";,\\n\\\\', b]
+['[\'\']']
+['[\'\', \'\']']
+['[a, \'\']']
+['[a, \'  \', b]']
+['[a, \'}\', b]']
+['[a, \'"\', b]']
+['[a, \'\\\'{}[]()";,\\\\n\\\\\\\\\', b]', '[a, \'\\\'{}[]()";,\\\\n\\\\\\\\\', b]']
 
 # timestamp list
 foreach type TIMESTAMP TIMESTAMP_MS TIMESTAMP_NS TIMESTAMP_S
@@ -176,9 +176,9 @@ INSERT INTO lists VALUES ([NULL, TIMESTAMP '1900-01-01 00:00:00']);
 query I
 SELECT * FROM lists
 ----
-[2010-01-01 01:23:45, infinity, -infinity]
+['2010-01-01 01:23:45', infinity, -infinity]
 []
 NULL
-[NULL, 1900-01-01 00:00:00]
+[NULL, '1900-01-01 00:00:00']
 
 endloop

@@ -138,15 +138,15 @@ void PostgresCatalog::ScanSchemas(ClientContext &context, std::function<void(Sch
 	schemas.Scan(context, [&](CatalogEntry &schema) { callback(schema.Cast<PostgresSchemaEntry>()); });
 }
 
-optional_ptr<SchemaCatalogEntry> PostgresCatalog::GetSchema(CatalogTransaction transaction, const string &schema_name,
-                                                            OnEntryNotFound if_not_found,
-                                                            QueryErrorContext error_context) {
+optional_ptr<SchemaCatalogEntry> PostgresCatalog::LookupSchema(CatalogTransaction transaction, const EntryLookupInfo &schema_lookup,
+                                                            OnEntryNotFound if_not_found) {
+    auto schema_name = schema_lookup.GetEntryName();
 	if (schema_name == DEFAULT_SCHEMA) {
-		return GetSchema(transaction, default_schema, if_not_found, error_context);
+		schema_name = default_schema;
 	}
 	auto &postgres_transaction = PostgresTransaction::Get(transaction.GetContext(), *this);
 	if (schema_name == "pg_temp") {
-		return GetSchema(transaction, postgres_transaction.GetTemporarySchema(), if_not_found, error_context);
+		schema_name = postgres_transaction.GetTemporarySchema();
 	}
 	auto entry = schemas.GetEntry(transaction.GetContext(), schema_name);
 	if (!entry && if_not_found != OnEntryNotFound::RETURN_NULL) {

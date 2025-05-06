@@ -180,8 +180,7 @@ InsertionOrderPreservingMap<string> PostgresUpdate::ParamsToString() const {
 //===--------------------------------------------------------------------===//
 // Plan
 //===--------------------------------------------------------------------===//
-unique_ptr<PhysicalOperator> PostgresCatalog::PlanUpdate(ClientContext &context, LogicalUpdate &op,
-                                                         unique_ptr<PhysicalOperator> plan) {
+PhysicalOperator &PostgresCatalog::PlanUpdate(ClientContext &context, PhysicalPlanGenerator &planner, LogicalUpdate &op, PhysicalOperator &plan) {
 	if (op.return_chunk) {
 		throw BinderException("RETURNING clause not yet supported for updates of a Postgres table");
 	}
@@ -190,10 +189,11 @@ unique_ptr<PhysicalOperator> PostgresCatalog::PlanUpdate(ClientContext &context,
 			throw BinderException("SET DEFAULT is not yet supported for updates of a Postgres table");
 		}
 	}
-	PostgresCatalog::MaterializePostgresScans(*plan);
-	auto insert = make_uniq<PostgresUpdate>(op, op.table, std::move(op.columns));
-	insert->children.push_back(std::move(plan));
-	return std::move(insert);
+
+	PostgresCatalog::MaterializePostgresScans(plan);
+	auto &update = planner.Make<PostgresUpdate>(op, op.table, std::move(op.columns));
+    update.children.push_back(plan);
+	return update;
 }
 
 } // namespace duckdb

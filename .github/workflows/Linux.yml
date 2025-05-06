@@ -75,7 +75,7 @@ jobs:
         GEN: ninja
         STATIC_LIBCPP: 1
       run: |
-        make release
+        make reldebug
 
     - name: Test extension
       env:
@@ -84,4 +84,4 @@ jobs:
       run: |
         psql -c "SELECT 43"
         source ./create-postgres-tables.sh
-        make test_release
+        make test_reldebug

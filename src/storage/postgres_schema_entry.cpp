@@ -183,12 +183,12 @@ void PostgresSchemaEntry::DropEntry(ClientContext &context, DropInfo &info) {
 	GetCatalogSet(info.type).DropEntry(context, info);
 }
 
-optional_ptr<CatalogEntry> PostgresSchemaEntry::GetEntry(CatalogTransaction transaction, CatalogType type,
-                                                         const string &name) {
-	if (!CatalogTypeIsSupported(type)) {
+optional_ptr<CatalogEntry> PostgresSchemaEntry::LookupEntry(CatalogTransaction transaction, const EntryLookupInfo &lookup_info) {
+	auto catalog_type = lookup_info.GetCatalogType();
+	if (!CatalogTypeIsSupported(catalog_type)) {
 		return nullptr;
 	}
-	return GetCatalogSet(type).GetEntry(transaction.GetContext(), name);
+	return GetCatalogSet(catalog_type).GetEntry(transaction.GetContext(), lookup_info.GetEntryName());
 }
 
 PostgresCatalogSet &PostgresSchemaEntry::GetCatalogSet(CatalogType type) {

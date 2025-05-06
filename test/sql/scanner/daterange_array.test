@@ -20,7 +20,7 @@ loop i 0 2
 query II
 SELECT * from daterange_array;
 ----
-1108	[["2010-01-01 14:30:00","2010-01-01 15:30:00")]
+1108	['["2010-01-01 14:30:00","2010-01-01 15:30:00")']
 
 statement ok
 USE memory

@@ -1,4 +1,15 @@
 #!/bin/bash
+set -e
+
+DUCKDB_PATH=duckdb
+if test -f build/release/duckdb; then
+  DUCKDB_PATH=build/release/duckdb
+elif test -f build/reldebug/duckdb; then
+  DUCKDB_PATH=build/reldebug/duckdb
+elif test -f build/debug/duckdb; then
+  DUCKDB_PATH=build/debug/duckdb
+fi
+
 echo "
 CREATE SCHEMA tpch; 
 CREATE SCHEMA tpcds;
@@ -6,7 +17,7 @@ CALL dbgen(sf=0.01, schema='tpch');
 CALL dsdgen(sf=0.01, schema='tpcds');
 EXPORT DATABASE '/tmp/postgresscannertmp';
 " | \
-./build/release/duckdb
+$DUCKDB_PATH
 
 dropdb --if-exists postgresscanner
 createdb postgresscanner

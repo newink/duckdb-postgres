@@ -153,10 +153,10 @@ InsertionOrderPreservingMap<string> PostgresInsert::ParamsToString() const {
 //===--------------------------------------------------------------------===//
 // Plan
 //===--------------------------------------------------------------------===//
-unique_ptr<PhysicalOperator> AddCastToPostgresTypes(ClientContext &context, unique_ptr<PhysicalOperator> plan) {
+PhysicalOperator &AddCastToPostgresTypes(ClientContext &context, PhysicalPlanGenerator &planner, PhysicalOperator &plan) {
 	// check if we need to cast anything
 	bool require_cast = false;
-	auto &child_types = plan->GetTypes();
+	auto &child_types = plan.GetTypes();
 	for (auto &type : child_types) {
 		auto postgres_type = PostgresUtils::ToPostgresType(type);
 		if (postgres_type != type) {
@@ -164,30 +164,30 @@ unique_ptr<PhysicalOperator> AddCastToPostgresTypes(ClientContext &context, uniq
 			break;
 		}
 	}
-	if (require_cast) {
-		vector<LogicalType> postgres_types;
-		vector<unique_ptr<Expression>> select_list;
-		for (idx_t i = 0; i < child_types.size(); i++) {
-			auto &type = child_types[i];
-			unique_ptr<Expression> expr;
-			expr = make_uniq<BoundReferenceExpression>(type, i);
+    if (!require_cast) {
+        return plan;
+    }
 
-			auto postgres_type = PostgresUtils::ToPostgresType(type);
-			if (postgres_type != type) {
-				// add a cast
-				expr = BoundCastExpression::AddCastToType(context, std::move(expr), postgres_type);
-			}
-			postgres_types.push_back(std::move(postgres_type));
-			select_list.push_back(std::move(expr));
-		}
-		// we need to cast: add casts
-		auto proj = make_uniq<PhysicalProjection>(std::move(postgres_types), std::move(select_list),
-		                                          plan->estimated_cardinality);
-		proj->children.push_back(std::move(plan));
-		plan = std::move(proj);
-	}
+    vector<LogicalType> postgres_types;
+    vector<unique_ptr<Expression>> select_list;
+    for (idx_t i = 0; i < child_types.size(); i++) {
+        auto &type = child_types[i];
+        unique_ptr<Expression> expr;
+        expr = make_uniq<BoundReferenceExpression>(type, i);
 
-	return plan;
+        auto postgres_type = PostgresUtils::ToPostgresType(type);
+        if (postgres_type != type) {
+            // add a cast
+            expr = BoundCastExpression::AddCastToType(context, std::move(expr), postgres_type);
+        }
+        postgres_types.push_back(std::move(postgres_type));
+        select_list.push_back(std::move(expr));
+    }
+
+    // we need to cast: add casts
+    auto &proj = planner.Make<PhysicalProjection>(std::move(postgres_types), std::move(select_list), plan.estimated_cardinality);
+    proj.children.push_back(plan);
+    return proj;
 }
 
 bool PostgresCatalog::IsPostgresScan(const string &name) {
@@ -206,36 +206,34 @@ void PostgresCatalog::MaterializePostgresScans(PhysicalOperator &op) {
 		}
 	}
 	for (auto &child : op.children) {
-		MaterializePostgresScans(*child);
+		MaterializePostgresScans(child);
 	}
 }
 
-unique_ptr<PhysicalOperator> PostgresCatalog::PlanInsert(ClientContext &context, LogicalInsert &op,
-                                                         unique_ptr<PhysicalOperator> plan) {
+PhysicalOperator &PostgresCatalog::PlanInsert(ClientContext &context, PhysicalPlanGenerator &planner, LogicalInsert &op, optional_ptr<PhysicalOperator> plan) {
 	if (op.return_chunk) {
 		throw BinderException("RETURNING clause not yet supported for insertion into Postgres table");
 	}
 	if (op.action_type != OnConflictAction::THROW) {
 		throw BinderException("ON CONFLICT clause not yet supported for insertion into Postgres table");
 	}
+
+    D_ASSERT(plan);
 	MaterializePostgresScans(*plan);
+	auto &inner_plan = AddCastToPostgresTypes(context, planner, *plan);
 
-	plan = AddCastToPostgresTypes(context, std::move(plan));
-
-	auto insert = make_uniq<PostgresInsert>(op, op.table, op.column_index_map);
-	insert->children.push_back(std::move(plan));
-	return std::move(insert);
+	auto &insert = planner.Make<PostgresInsert>(op, op.table, op.column_index_map);
+	insert.children.push_back(inner_plan);
+	return insert;
 }
 
-unique_ptr<PhysicalOperator> PostgresCatalog::PlanCreateTableAs(ClientContext &context, LogicalCreateTable &op,
-                                                                unique_ptr<PhysicalOperator> plan) {
-	plan = AddCastToPostgresTypes(context, std::move(plan));
+PhysicalOperator &PostgresCatalog::PlanCreateTableAs(ClientContext &context, PhysicalPlanGenerator &planner, LogicalCreateTable &op, PhysicalOperator &plan) {
+	auto &inner_plan = AddCastToPostgresTypes(context, planner, plan);
+	MaterializePostgresScans(inner_plan);
 
-	MaterializePostgresScans(*plan);
-
-	auto insert = make_uniq<PostgresInsert>(op, op.schema, std::move(op.info));
-	insert->children.push_back(std::move(plan));
-	return std::move(insert);
+	auto &insert = planner.Make<PostgresInsert>(op, op.schema, std::move(op.info));
+	insert.children.push_back(inner_plan);
+	return insert;
 }
 
 } // namespace duckdb

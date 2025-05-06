@@ -45,7 +45,7 @@ query IIIII
 SELECT * FROM pg_complex_types_mix
 ----
 0
-[08:00:2b:01:02:03]
+['08:00:2b:01:02:03']
 hello	world
 [string, list, NULL]
 \x00\xFF

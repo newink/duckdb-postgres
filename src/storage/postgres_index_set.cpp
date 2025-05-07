@@ -61,10 +61,10 @@ string PGGetCreateIndexSQL(CreateIndexInfo &info, TableCatalogEntry &tbl) {
 		sql += " UNIQUE";
 	}
 	sql += " INDEX ";
-	sql += KeywordHelper::WriteOptionallyQuoted(info.index_name);
+	sql += PostgresUtils::QuotePostgresIdentifier(info.index_name);
 	sql += " ON ";
-	sql += KeywordHelper::WriteOptionallyQuoted(tbl.schema.name) + ".";
-	sql += KeywordHelper::WriteOptionallyQuoted(tbl.name);
+	sql += PostgresUtils::QuotePostgresIdentifier(tbl.schema.name) + ".";
+	sql += PostgresUtils::QuotePostgresIdentifier(tbl.name);
 	sql += "(";
 	for (idx_t i = 0; i < info.parsed_expressions.size(); i++) {
 		if (i > 0) {

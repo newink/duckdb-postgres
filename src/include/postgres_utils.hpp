@@ -68,6 +68,7 @@ public:
 	static bool SupportedPostgresOid(const LogicalType &input);
 	static LogicalType RemoveAlias(const LogicalType &type);
 	static PostgresType CreateEmptyPostgresType(const LogicalType &type);
+	static string QuotePostgresIdentifier(const string &text);
 
 	static PostgresVersion ExtractPostgresVersion(const string &version);
 };

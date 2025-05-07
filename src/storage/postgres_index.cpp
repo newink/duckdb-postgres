@@ -4,6 +4,10 @@
 #include "duckdb/planner/operator/logical_extension_operator.hpp"
 #include "duckdb/catalog/catalog_entry/table_catalog_entry.hpp"
 #include "duckdb/parser/parsed_data/drop_info.hpp"
+#include "duckdb/planner/operator/logical_create_index.hpp"
+#include "duckdb/parser/parsed_data/create_index_info.hpp"
+#include "duckdb/planner/expression_binder/index_binder.hpp"
+#include "duckdb/planner/operator/logical_get.hpp"
 
 namespace duckdb {
 
@@ -56,8 +60,8 @@ public:
 	unique_ptr<CreateIndexInfo> info;
 	TableCatalogEntry &table;
 
-	unique_ptr<PhysicalOperator> CreatePlan(ClientContext &context, PhysicalPlanGenerator &generator) override {
-		return make_uniq<PostgresCreateIndex>(std::move(info), table);
+	PhysicalOperator &CreatePlan(ClientContext &context, PhysicalPlanGenerator &planner) override {
+		return planner.Make<PostgresCreateIndex>(std::move(info), table);
 	}
 
 	void Serialize(Serializer &serializer) const override {
@@ -72,8 +76,21 @@ public:
 unique_ptr<LogicalOperator> PostgresCatalog::BindCreateIndex(Binder &binder, CreateStatement &stmt,
                                                              TableCatalogEntry &table,
                                                              unique_ptr<LogicalOperator> plan) {
-	return make_uniq<LogicalPostgresCreateIndex>(unique_ptr_cast<CreateInfo, CreateIndexInfo>(std::move(stmt.info)),
-	                                             table);
+	// FIXME: this is a work-around for the CreateIndexInfo we are getting here not being fully bound
+	// this needs to be fixed upstream (eventually)
+	auto create_index_info = unique_ptr_cast<CreateInfo, CreateIndexInfo>(std::move(stmt.info));
+	IndexBinder index_binder(binder, binder.context);
+
+	// Bind the index expressions.
+	vector<unique_ptr<Expression>> expressions;
+	for (auto &expr : create_index_info->expressions) {
+		expressions.push_back(index_binder.Bind(expr));
+	}
+
+	auto &get = plan->Cast<LogicalGet>();
+	index_binder.InitCreateIndexInfo(get, *create_index_info, table.schema.name);
+
+	return make_uniq<LogicalPostgresCreateIndex>(std::move(create_index_info), table);
 }
 
 } // namespace duckdb

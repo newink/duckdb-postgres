@@ -73,8 +73,8 @@ optional_ptr<CatalogEntry> PostgresSchemaEntry::CreateIndex(CatalogTransaction t
 string PGGetCreateViewSQL(PostgresSchemaEntry &schema, CreateViewInfo &info) {
 	string sql;
 	sql = "CREATE VIEW ";
-	sql += KeywordHelper::WriteOptionallyQuoted(schema.name) + ".";
-	sql += KeywordHelper::WriteOptionallyQuoted(info.view_name);
+	sql += PostgresUtils::QuotePostgresIdentifier(schema.name) + ".";
+	sql += PostgresUtils::QuotePostgresIdentifier(info.view_name);
 	sql += " ";
 	if (!info.aliases.empty()) {
 		sql += "(";
@@ -83,7 +83,7 @@ string PGGetCreateViewSQL(PostgresSchemaEntry &schema, CreateViewInfo &info) {
 				sql += ", ";
 			}
 			auto &alias = info.aliases[i];
-			sql += KeywordHelper::WriteOptionallyQuoted(alias);
+			sql += PostgresUtils::QuotePostgresIdentifier(alias);
 		}
 		sql += ") ";
 	}
@@ -183,12 +183,12 @@ void PostgresSchemaEntry::DropEntry(ClientContext &context, DropInfo &info) {
 	GetCatalogSet(info.type).DropEntry(context, info);
 }
 
-optional_ptr<CatalogEntry> PostgresSchemaEntry::GetEntry(CatalogTransaction transaction, CatalogType type,
-                                                         const string &name) {
-	if (!CatalogTypeIsSupported(type)) {
+optional_ptr<CatalogEntry> PostgresSchemaEntry::LookupEntry(CatalogTransaction transaction, const EntryLookupInfo &lookup_info) {
+	auto catalog_type = lookup_info.GetCatalogType();
+	if (!CatalogTypeIsSupported(catalog_type)) {
 		return nullptr;
 	}
-	return GetCatalogSet(type).GetEntry(transaction.GetContext(), name);
+	return GetCatalogSet(catalog_type).GetEntry(transaction.GetContext(), lookup_info.GetEntryName());
 }
 
 PostgresCatalogSet &PostgresSchemaEntry::GetCatalogSet(CatalogType type) {

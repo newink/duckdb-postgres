@@ -291,11 +291,14 @@ static unique_ptr<GlobalTableFunctionState> PostgresInitGlobalState(ClientContex
 	auto pg_catalog = bind_data.GetCatalog();
 	if (pg_catalog) {
 		auto &transaction = Transaction::Get(context, *pg_catalog).Cast<PostgresTransaction>();
-		auto &con = transaction.GetConnection();
+		auto &con =
+		    bind_data.use_transaction ? transaction.GetConnection() : transaction.GetConnectionWithoutTransaction();
 		result->SetConnection(con.GetConnection());
 	} else {
 		auto con = PostgresConnection::Open(bind_data.dsn);
-		PostgresScanConnect(con, string());
+		if (bind_data.use_transaction) {
+			PostgresScanConnect(con, string());
+		}
 		result->SetConnection(std::move(con));
 	}
 	if (bind_data.requires_materialization) {

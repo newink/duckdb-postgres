@@ -141,9 +141,6 @@ void PostgresCatalog::ScanSchemas(ClientContext &context, std::function<void(Sch
 optional_ptr<SchemaCatalogEntry> PostgresCatalog::LookupSchema(CatalogTransaction transaction, const EntryLookupInfo &schema_lookup,
                                                             OnEntryNotFound if_not_found) {
     auto schema_name = schema_lookup.GetEntryName();
-	if (schema_name == DEFAULT_SCHEMA) {
-		schema_name = default_schema;
-	}
 	auto &postgres_transaction = PostgresTransaction::Get(transaction.GetContext(), *this);
 	if (schema_name == "pg_temp") {
 		schema_name = postgres_transaction.GetTemporarySchema();

@@ -29,3 +29,13 @@ FROM s.large_tbl LIMIT 5 OFFSET 5
 7
 8
 9
+
+statement ok
+set explain_output='optimized_only'
+
+# limit is now not in DuckDB plan, but sent down to Postgres, this checks that
+
+query II
+EXPLAIN FROM s.large_tbl LIMIT 5;
+----
+logical_opt	<!REGEX>:.*LIMIT.*

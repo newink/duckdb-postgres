@@ -66,7 +66,7 @@ static void PGExecuteFunction(ClientContext &context, TableFunctionInput &data_p
 PostgresExecuteFunction::PostgresExecuteFunction()
     : TableFunction("postgres_execute", {LogicalType::VARCHAR, LogicalType::VARCHAR}, PGExecuteFunction,
                     PGExecuteBind) {
-	    named_parameters["use_transaction"] = LogicalType::BOOLEAN;
+	named_parameters["use_transaction"] = LogicalType::BOOLEAN;
 }
 
 } // namespace duckdb

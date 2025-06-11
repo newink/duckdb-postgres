@@ -153,7 +153,8 @@ InsertionOrderPreservingMap<string> PostgresInsert::ParamsToString() const {
 //===--------------------------------------------------------------------===//
 // Plan
 //===--------------------------------------------------------------------===//
-PhysicalOperator &AddCastToPostgresTypes(ClientContext &context, PhysicalPlanGenerator &planner, PhysicalOperator &plan) {
+PhysicalOperator &AddCastToPostgresTypes(ClientContext &context, PhysicalPlanGenerator &planner,
+                                         PhysicalOperator &plan) {
 	// check if we need to cast anything
 	bool require_cast = false;
 	auto &child_types = plan.GetTypes();
@@ -164,30 +165,31 @@ PhysicalOperator &AddCastToPostgresTypes(ClientContext &context, PhysicalPlanGen
 			break;
 		}
 	}
-    if (!require_cast) {
-        return plan;
-    }
+	if (!require_cast) {
+		return plan;
+	}
 
-    vector<LogicalType> postgres_types;
-    vector<unique_ptr<Expression>> select_list;
-    for (idx_t i = 0; i < child_types.size(); i++) {
-        auto &type = child_types[i];
-        unique_ptr<Expression> expr;
-        expr = make_uniq<BoundReferenceExpression>(type, i);
+	vector<LogicalType> postgres_types;
+	vector<unique_ptr<Expression>> select_list;
+	for (idx_t i = 0; i < child_types.size(); i++) {
+		auto &type = child_types[i];
+		unique_ptr<Expression> expr;
+		expr = make_uniq<BoundReferenceExpression>(type, i);
 
-        auto postgres_type = PostgresUtils::ToPostgresType(type);
-        if (postgres_type != type) {
-            // add a cast
-            expr = BoundCastExpression::AddCastToType(context, std::move(expr), postgres_type);
-        }
-        postgres_types.push_back(std::move(postgres_type));
-        select_list.push_back(std::move(expr));
-    }
+		auto postgres_type = PostgresUtils::ToPostgresType(type);
+		if (postgres_type != type) {
+			// add a cast
+			expr = BoundCastExpression::AddCastToType(context, std::move(expr), postgres_type);
+		}
+		postgres_types.push_back(std::move(postgres_type));
+		select_list.push_back(std::move(expr));
+	}
 
-    // we need to cast: add casts
-    auto &proj = planner.Make<PhysicalProjection>(std::move(postgres_types), std::move(select_list), plan.estimated_cardinality);
-    proj.children.push_back(plan);
-    return proj;
+	// we need to cast: add casts
+	auto &proj =
+	    planner.Make<PhysicalProjection>(std::move(postgres_types), std::move(select_list), plan.estimated_cardinality);
+	proj.children.push_back(plan);
+	return proj;
 }
 
 bool PostgresCatalog::IsPostgresScan(const string &name) {
@@ -210,7 +212,8 @@ void PostgresCatalog::MaterializePostgresScans(PhysicalOperator &op) {
 	}
 }
 
-PhysicalOperator &PostgresCatalog::PlanInsert(ClientContext &context, PhysicalPlanGenerator &planner, LogicalInsert &op, optional_ptr<PhysicalOperator> plan) {
+PhysicalOperator &PostgresCatalog::PlanInsert(ClientContext &context, PhysicalPlanGenerator &planner, LogicalInsert &op,
+                                              optional_ptr<PhysicalOperator> plan) {
 	if (op.return_chunk) {
 		throw BinderException("RETURNING clause not yet supported for insertion into Postgres table");
 	}
@@ -218,7 +221,7 @@ PhysicalOperator &PostgresCatalog::PlanInsert(ClientContext &context, PhysicalPl
 		throw BinderException("ON CONFLICT clause not yet supported for insertion into Postgres table");
 	}
 
-    D_ASSERT(plan);
+	D_ASSERT(plan);
 	MaterializePostgresScans(*plan);
 	auto &inner_plan = AddCastToPostgresTypes(context, planner, *plan);
 
@@ -227,7 +230,8 @@ PhysicalOperator &PostgresCatalog::PlanInsert(ClientContext &context, PhysicalPl
 	return insert;
 }
 
-PhysicalOperator &PostgresCatalog::PlanCreateTableAs(ClientContext &context, PhysicalPlanGenerator &planner, LogicalCreateTable &op, PhysicalOperator &plan) {
+PhysicalOperator &PostgresCatalog::PlanCreateTableAs(ClientContext &context, PhysicalPlanGenerator &planner,
+                                                     LogicalCreateTable &op, PhysicalOperator &plan) {
 	auto &inner_plan = AddCastToPostgresTypes(context, planner, plan);
 	MaterializePostgresScans(inner_plan);
 

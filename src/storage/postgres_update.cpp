@@ -180,7 +180,8 @@ InsertionOrderPreservingMap<string> PostgresUpdate::ParamsToString() const {
 //===--------------------------------------------------------------------===//
 // Plan
 //===--------------------------------------------------------------------===//
-PhysicalOperator &PostgresCatalog::PlanUpdate(ClientContext &context, PhysicalPlanGenerator &planner, LogicalUpdate &op, PhysicalOperator &plan) {
+PhysicalOperator &PostgresCatalog::PlanUpdate(ClientContext &context, PhysicalPlanGenerator &planner, LogicalUpdate &op,
+                                              PhysicalOperator &plan) {
 	if (op.return_chunk) {
 		throw BinderException("RETURNING clause not yet supported for updates of a Postgres table");
 	}
@@ -192,7 +193,7 @@ PhysicalOperator &PostgresCatalog::PlanUpdate(ClientContext &context, PhysicalPl
 
 	PostgresCatalog::MaterializePostgresScans(plan);
 	auto &update = planner.Make<PostgresUpdate>(op, op.table, std::move(op.columns));
-    update.children.push_back(plan);
+	update.children.push_back(plan);
 	return update;
 }
 

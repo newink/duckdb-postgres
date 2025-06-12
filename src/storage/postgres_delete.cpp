@@ -119,7 +119,8 @@ InsertionOrderPreservingMap<string> PostgresDelete::ParamsToString() const {
 //===--------------------------------------------------------------------===//
 // Plan
 //===--------------------------------------------------------------------===//
-PhysicalOperator &PostgresCatalog::PlanDelete(ClientContext &context, PhysicalPlanGenerator &planner, LogicalDelete &op, PhysicalOperator &plan) {
+PhysicalOperator &PostgresCatalog::PlanDelete(ClientContext &context, PhysicalPlanGenerator &planner, LogicalDelete &op,
+                                              PhysicalOperator &plan) {
 	if (op.return_chunk) {
 		throw BinderException("RETURNING clause not yet supported for deletion of a Postgres table");
 	}
@@ -127,7 +128,7 @@ PhysicalOperator &PostgresCatalog::PlanDelete(ClientContext &context, PhysicalPl
 	PostgresCatalog::MaterializePostgresScans(plan);
 
 	auto &delete_op = planner.Make<PostgresDelete>(op, op.table, bound_ref.index);
-    delete_op.children.push_back(plan);
+	delete_op.children.push_back(plan);
 	return delete_op;
 }
 

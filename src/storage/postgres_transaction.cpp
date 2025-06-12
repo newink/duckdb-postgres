@@ -9,7 +9,8 @@ namespace duckdb {
 
 PostgresTransaction::PostgresTransaction(PostgresCatalog &postgres_catalog, TransactionManager &manager,
                                          ClientContext &context)
-    : Transaction(manager, context), access_mode(postgres_catalog.access_mode) {
+    : Transaction(manager, context), access_mode(postgres_catalog.access_mode),
+      isolation_level(postgres_catalog.isolation_level) {
 	connection = postgres_catalog.GetConnectionPool().GetConnection();
 }
 
@@ -31,8 +32,21 @@ void PostgresTransaction::Rollback() {
 	}
 }
 
-static string GetBeginTransactionQuery(AccessMode access_mode) {
-	string result = "BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ";
+string PostgresTransaction::GetBeginTransactionQuery() {
+	string result = "BEGIN TRANSACTION ISOLATION LEVEL ";
+	switch (isolation_level) {
+	case PostgresIsolationLevel::READ_COMMITTED:
+		result += "READ COMMITTED";
+		break;
+	case PostgresIsolationLevel::REPEATABLE_READ:
+		result += "REPEATABLE READ";
+		break;
+	case PostgresIsolationLevel::SERIALIZABLE:
+		result += "SERIALIZABLE";
+		break;
+	default:
+		throw InternalException("Unsupported isolation level");
+	}
 	if (access_mode == AccessMode::READ_ONLY) {
 		result += " READ ONLY";
 	}
@@ -53,7 +67,7 @@ PostgresConnection &PostgresTransaction::GetConnection() {
 	auto &con = GetConnectionRaw();
 	if (transaction_state == PostgresTransactionState::TRANSACTION_NOT_YET_STARTED) {
 		transaction_state = PostgresTransactionState::TRANSACTION_STARTED;
-		string query = GetBeginTransactionQuery(access_mode);
+		string query = GetBeginTransactionQuery();
 		con.Execute(query);
 	}
 	return con;
@@ -71,7 +85,7 @@ unique_ptr<PostgresResult> PostgresTransaction::Query(const string &query) {
 	auto &con = GetConnectionRaw();
 	if (transaction_state == PostgresTransactionState::TRANSACTION_NOT_YET_STARTED) {
 		transaction_state = PostgresTransactionState::TRANSACTION_STARTED;
-		string transaction_start = GetBeginTransactionQuery(access_mode);
+		string transaction_start = GetBeginTransactionQuery();
 		transaction_start += ";\n";
 		return con.Query(transaction_start + query);
 	}
@@ -93,7 +107,7 @@ vector<unique_ptr<PostgresResult>> PostgresTransaction::ExecuteQueries(const str
 	auto &con = GetConnectionRaw();
 	if (transaction_state == PostgresTransactionState::TRANSACTION_NOT_YET_STARTED) {
 		transaction_state = PostgresTransactionState::TRANSACTION_STARTED;
-		string transaction_start = GetBeginTransactionQuery(access_mode);
+		string transaction_start = GetBeginTransactionQuery();
 		transaction_start += ";\n";
 		return con.ExecuteQueries(transaction_start + queries);
 	}

@@ -45,7 +45,7 @@ string TransformBlob(const string &val) {
 	char const HEX_DIGITS[] = "0123456789ABCDEF";
 
 	string result = "'\\x";
-	for(idx_t i = 0; i < val.size(); i++) {
+	for (idx_t i = 0; i < val.size(); i++) {
 		uint8_t byte_val = static_cast<uint8_t>(val[i]);
 		result += HEX_DIGITS[(byte_val >> 4) & 0xf];
 		result += HEX_DIGITS[byte_val & 0xf];
@@ -96,7 +96,7 @@ string PostgresFilterPushdown::TransformFilter(string &column_name, TableFilter 
 	case TableFilterType::IN_FILTER: {
 		auto &in_filter = filter.Cast<InFilter>();
 		string in_list;
-		for(auto &val : in_filter.values) {
+		for (auto &val : in_filter.values) {
 			if (!in_list.empty()) {
 				in_list += ", ";
 			}

@@ -54,6 +54,8 @@ struct PostgresCopyState {
 	void Initialize(ClientContext &context);
 };
 
+enum class PostgresIsolationLevel { READ_COMMITTED, REPEATABLE_READ, SERIALIZABLE };
+
 class PostgresUtils {
 public:
 	static PGconn *PGConnect(const string &dsn);

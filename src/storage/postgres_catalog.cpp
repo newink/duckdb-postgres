@@ -10,10 +10,11 @@
 
 namespace duckdb {
 
-PostgresCatalog::PostgresCatalog(AttachedDatabase &db_p, string connection_string_p, string attach_path_p, AccessMode access_mode,
-                                 string schema_to_load)
-    : Catalog(db_p), connection_string(std::move(connection_string_p)), attach_path(std::move(attach_path_p)), access_mode(access_mode), schemas(*this, schema_to_load), connection_pool(*this),
-      default_schema(schema_to_load) {
+PostgresCatalog::PostgresCatalog(AttachedDatabase &db_p, string connection_string_p, string attach_path_p,
+                                 AccessMode access_mode, string schema_to_load, PostgresIsolationLevel isolation_level)
+    : Catalog(db_p), connection_string(std::move(connection_string_p)), attach_path(std::move(attach_path_p)),
+      access_mode(access_mode), isolation_level(isolation_level), schemas(*this, schema_to_load),
+      connection_pool(*this), default_schema(schema_to_load) {
 	if (default_schema.empty()) {
 		default_schema = "public";
 	}
@@ -100,7 +101,6 @@ string PostgresCatalog::GetConnectionString(ClientContext &context, const string
 	return connection_string;
 }
 
-
 PostgresCatalog::~PostgresCatalog() = default;
 
 void PostgresCatalog::Initialize(bool load_builtin) {
@@ -138,9 +138,10 @@ void PostgresCatalog::ScanSchemas(ClientContext &context, std::function<void(Sch
 	schemas.Scan(context, [&](CatalogEntry &schema) { callback(schema.Cast<PostgresSchemaEntry>()); });
 }
 
-optional_ptr<SchemaCatalogEntry> PostgresCatalog::LookupSchema(CatalogTransaction transaction, const EntryLookupInfo &schema_lookup,
-                                                            OnEntryNotFound if_not_found) {
-    auto schema_name = schema_lookup.GetEntryName();
+optional_ptr<SchemaCatalogEntry> PostgresCatalog::LookupSchema(CatalogTransaction transaction,
+                                                               const EntryLookupInfo &schema_lookup,
+                                                               OnEntryNotFound if_not_found) {
+	auto schema_name = schema_lookup.GetEntryName();
 	auto &postgres_transaction = PostgresTransaction::Get(transaction.GetContext(), *this);
 	if (schema_name == "pg_temp") {
 		schema_name = postgres_transaction.GetTemporarySchema();

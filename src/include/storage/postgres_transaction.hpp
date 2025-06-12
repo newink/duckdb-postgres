@@ -43,11 +43,14 @@ private:
 	PostgresPoolConnection connection;
 	PostgresTransactionState transaction_state;
 	AccessMode access_mode;
+	PostgresIsolationLevel isolation_level;
 	string temporary_schema;
 
 private:
 	//! Retrieves the connection **without** starting a transaction if none is active
 	PostgresConnection &GetConnectionRaw();
+
+	string GetBeginTransactionQuery();
 };
 
 } // namespace duckdb

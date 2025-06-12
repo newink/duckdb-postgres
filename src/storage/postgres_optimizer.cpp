@@ -7,7 +7,6 @@
 #include "storage/postgres_catalog.hpp"
 #include "postgres_scanner.hpp"
 
-
 namespace duckdb {
 
 struct PostgresOperators {

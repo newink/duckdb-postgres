@@ -1,6 +1,6 @@
 # name: test/sql/misc/postgres_binary.test
 # description: Test postgres binary copy through a file
-# group: [scanner]
+# group: [misc]
 
 require postgres_scanner
 

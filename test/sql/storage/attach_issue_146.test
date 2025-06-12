@@ -1,4 +1,4 @@
-# name: test/sql/storage/attach_keywords.test
+# name: test/sql/storage/attach_issue_146.test
 # description: Test quoting in ATTACH with keyword identifiers
 # group: [storage]
 

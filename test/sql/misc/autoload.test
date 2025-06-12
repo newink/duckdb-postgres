@@ -1,4 +1,4 @@
-# name: test/sql/misc/autoloading.test
+# name: test/sql/misc/autoload.test
 # description: Test autoloading based on setting
 # group: [misc]
 

@@ -341,7 +341,7 @@ static bool PostgresParallelStateNext(ClientContext &context, const FunctionData
 	lstate.batch_idx = gstate.batch_idx++;
 	if (gstate.page_idx < bind_data->pages_approx) {
 		auto page_max = gstate.page_idx + bind_data->pages_per_task;
-		if (page_max >= bind_data->pages_approx) {
+		if (page_max >= bind_data->pages_approx || page_max > POSTGRES_TID_MAX) {
 			// the relpages entry is not the real max, so make the last task bigger
 			page_max = POSTGRES_TID_MAX;
 		}

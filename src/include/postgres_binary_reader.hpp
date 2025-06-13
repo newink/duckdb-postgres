@@ -8,21 +8,19 @@
 
 #pragma once
 
-#include "duckdb.hpp"
-#include "duckdb/common/types/interval.hpp"
-#include "postgres_conversion.hpp"
+#include "postgres_result_reader.hpp"
+#include "postgres_connection.hpp"
 
 namespace duckdb {
 
-struct PostgresBinaryReader {
-	explicit PostgresBinaryReader(PostgresConnection &con_p) : con(con_p) {
-	}
-	~PostgresBinaryReader() {
-		Reset();
-	}
-	PostgresConnection &GetConn() {
-		return con;
-	}
+struct PostgresBinaryReader : public PostgresResultReader {
+	explicit PostgresBinaryReader(PostgresConnection &con, const vector<column_t> &column_ids,
+	                              const PostgresBindData &bind_data);
+	~PostgresBinaryReader() override;
+
+public:
+	void BeginCopy(const string &sql) override;
+	PostgresReadResult Read(DataChunk &result) override;
 
 	bool Next() {
 		Reset();
@@ -570,7 +568,6 @@ private:
 	data_ptr_t buffer = nullptr;
 	data_ptr_t buffer_ptr = nullptr;
 	data_ptr_t end = nullptr;
-	PostgresConnection &con;
 };
 
 } // namespace duckdb

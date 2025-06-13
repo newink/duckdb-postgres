@@ -420,55 +420,23 @@ static unique_ptr<LocalTableFunctionState> PostgresInitLocalState(ExecutionConte
 void PostgresLocalState::ScanChunk(ClientContext &context, const PostgresBindData &bind_data,
                                    PostgresGlobalState &gstate, DataChunk &output) {
 	idx_t output_offset = 0;
-	PostgresBinaryReader reader(connection);
+	PostgresBinaryReader reader(connection, column_ids, bind_data);
 	while (true) {
 		if (done && !PostgresParallelStateNext(context, &bind_data, *this, gstate)) {
 			return;
 		}
 		if (!exec) {
-			connection.BeginCopyFrom(reader, sql);
+			reader.BeginCopy(sql);
 			exec = true;
 		}
-
-		output.SetCardinality(output_offset);
-		if (output_offset == STANDARD_VECTOR_SIZE) {
-			return;
-		}
-
-		while (!reader.Ready()) {
-			if (!reader.Next()) {
-				// finished this batch
-				reader.CheckResult();
-				done = true;
-				continue;
-			}
-		}
-
-		auto tuple_count = reader.ReadInteger<int16_t>();
-		if (tuple_count <= 0) { // done here, lets try to get more
-			reader.Reset();
+		auto read_result = reader.Read(output);
+		if (read_result == PostgresReadResult::FINISHED) {
 			done = true;
 			continue;
 		}
-
-		D_ASSERT(tuple_count == column_ids.size());
-
-		for (idx_t output_idx = 0; output_idx < output.ColumnCount(); output_idx++) {
-			auto col_idx = column_ids[output_idx];
-			auto &out_vec = output.data[output_idx];
-			if (col_idx == COLUMN_IDENTIFIER_ROW_ID) {
-				// row id
-				// ctid in postgres are a composite type of (page_index, tuple_in_page)
-				// the page index is a 4-byte integer, the tuple_in_page a 2-byte integer
-				PostgresType ctid_type;
-				ctid_type.info = PostgresTypeAnnotation::CTID;
-				reader.ReadValue(LogicalType::BIGINT, ctid_type, out_vec, output_offset);
-			} else {
-				reader.ReadValue(bind_data.types[col_idx], bind_data.postgres_types[col_idx], out_vec, output_offset);
-			}
+		if (output.size() == STANDARD_VECTOR_SIZE) {
+			return;
 		}
-		reader.Reset();
-		output_offset++;
 	}
 }
 

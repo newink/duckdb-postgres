@@ -10,6 +10,7 @@
 #include "postgres_scanner.hpp"
 #include "postgres_result.hpp"
 #include "postgres_binary_reader.hpp"
+#include "postgres_text_reader.hpp"
 #include "storage/postgres_catalog.hpp"
 #include "storage/postgres_transaction.hpp"
 #include "storage/postgres_table_set.hpp"
@@ -31,6 +32,7 @@ struct PostgresLocalState : public LocalTableFunctionState {
 	PostgresConnection connection;
 	idx_t batch_idx = 0;
 	PostgresPoolConnection pool_connection;
+	unique_ptr<PostgresResultReader> reader;
 
 	void ScanChunk(ClientContext &context, const PostgresBindData &bind_data, PostgresGlobalState &gstate,
 	               DataChunk &output);
@@ -113,6 +115,14 @@ void PostgresScanFunction::PrepareBind(PostgresVersion version, ClientContext &c
 	if (context.TryGetCurrentSetting("pg_use_ctid_scan", pg_use_ctid_scan)) {
 		use_ctid_scan = BooleanValue::Get(pg_use_ctid_scan);
 	}
+	Value use_text_protocol;
+	if (context.TryGetCurrentSetting("pg_use_text_protocol", use_text_protocol)) {
+		if (BooleanValue::Get(use_text_protocol)) {
+			bind_data.use_text_protocol = true;
+			use_ctid_scan = false;
+		}
+	}
+
 	if (version.major_v < 14) {
 		// Disable parallel CTID scan on older Postgres versions since it is not efficient
 		// see https://github.com/duckdb/postgres_scanner/issues/186
@@ -127,7 +137,7 @@ void PostgresScanFunction::PrepareBind(PostgresVersion version, ClientContext &c
 
 void PostgresBindData::SetTablePages(idx_t approx_num_pages) {
 	this->pages_approx = approx_num_pages;
-	if (!read_only) {
+	if (!read_only || use_text_protocol) {
 		max_threads = 1;
 	} else {
 		max_threads = MaxValue<idx_t>(pages_approx / pages_per_task, 1);
@@ -238,6 +248,9 @@ static void PostgresInitInternal(ClientContext &context, const PostgresBindData 
 	    PostgresFilterPushdown::TransformFilters(lstate.column_ids, lstate.filters, bind_data->names);
 
 	string filter;
+
+	lstate.exec = false;
+	lstate.done = false;
 	if (bind_data->pages_approx > 0) {
 		filter = StringUtil::Format("WHERE ctid BETWEEN '(%d,0)'::tid AND '(%d,0)'::tid", task_min, task_max);
 	}
@@ -249,20 +262,23 @@ static void PostgresInitInternal(ClientContext &context, const PostgresBindData 
 		}
 		filter += filter_string;
 	}
+	string query;
 	if (bind_data->table_name.empty()) {
 		D_ASSERT(!bind_data->sql.empty());
-		lstate.sql =
-		    StringUtil::Format(R"(COPY (SELECT %s FROM (%s) AS __unnamed_subquery %s%s) TO STDOUT (FORMAT "binary");)",
-		                       col_names, bind_data->sql, filter, bind_data->limit);
+		query = StringUtil::Format(R"(SELECT %s FROM (%s) AS __unnamed_subquery %s%s)", col_names, bind_data->sql,
+		                           filter, bind_data->limit);
 
 	} else {
-		lstate.sql =
-		    StringUtil::Format(R"(COPY (SELECT %s FROM %s.%s %s%s) TO STDOUT (FORMAT "binary");)", col_names,
-		                       KeywordHelper::WriteQuoted(bind_data->schema_name, '"'),
-		                       KeywordHelper::WriteQuoted(bind_data->table_name, '"'), filter, bind_data->limit);
+		query = StringUtil::Format(R"(SELECT %s FROM %s.%s %s%s)", col_names,
+		                           KeywordHelper::WriteQuoted(bind_data->schema_name, '"'),
+		                           KeywordHelper::WriteQuoted(bind_data->table_name, '"'), filter, bind_data->limit);
 	}
-	lstate.exec = false;
-	lstate.done = false;
+	if (!bind_data->use_text_protocol) {
+		query = StringUtil::Format(R"(COPY (%s) TO STDOUT (FORMAT "binary");)", query);
+	} else {
+		query += ";";
+	}
+	lstate.sql = std::move(query);
 }
 
 static idx_t PostgresMaxThreads(ClientContext &context, const FunctionData *bind_data_p) {
@@ -420,16 +436,22 @@ static unique_ptr<LocalTableFunctionState> PostgresInitLocalState(ExecutionConte
 void PostgresLocalState::ScanChunk(ClientContext &context, const PostgresBindData &bind_data,
                                    PostgresGlobalState &gstate, DataChunk &output) {
 	idx_t output_offset = 0;
-	PostgresBinaryReader reader(connection, column_ids, bind_data);
+	if (!reader) {
+		if (bind_data.use_text_protocol) {
+			reader = make_uniq<PostgresTextReader>(context, connection, column_ids, bind_data);
+		} else {
+			reader = make_uniq<PostgresBinaryReader>(connection, column_ids, bind_data);
+		}
+	}
 	while (true) {
 		if (done && !PostgresParallelStateNext(context, &bind_data, *this, gstate)) {
 			return;
 		}
 		if (!exec) {
-			reader.BeginCopy(sql);
+			reader->BeginCopy(sql);
 			exec = true;
 		}
-		auto read_result = reader.Read(output);
+		auto read_result = reader->Read(output);
 		if (read_result == PostgresReadResult::FINISHED) {
 			done = true;
 			continue;

@@ -41,6 +41,7 @@ struct PostgresBindData : public FunctionData {
 	bool read_only = true;
 	bool emit_ctid = false;
 	bool use_transaction = true;
+	bool use_text_protocol = false;
 	idx_t max_threads = 1;
 
 public:

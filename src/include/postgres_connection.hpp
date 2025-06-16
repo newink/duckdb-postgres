@@ -61,7 +61,7 @@ public:
 	void CopyChunk(ClientContext &context, PostgresCopyState &state, DataChunk &chunk, DataChunk &varchar_chunk);
 	void FinishCopyTo(PostgresCopyState &state);
 
-	void BeginCopyFrom(PostgresBinaryReader &reader, const string &query);
+	void BeginCopyFrom(const string &query, ExecStatusType expected_result);
 
 	bool IsOpen();
 	void Close();

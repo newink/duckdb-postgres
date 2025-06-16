@@ -119,6 +119,7 @@ void ParsePostgresNested(T &parser, string_t list, char start, char end) {
 	parser.Initialize();
 	bool quoted = false;
 	bool was_quoted = false;
+	vector<char> delims;
 	string current_string;
 	for (idx_t i = 1; i < size - 1; i++) {
 		auto c = str[i];
@@ -142,11 +143,32 @@ void ParsePostgresNested(T &parser, string_t list, char start, char end) {
 			continue;
 		}
 		switch (c) {
+		case '{':
+			delims.push_back('}');
+			current_string += c;
+			break;
+		case '(':
+			delims.push_back(')');
+			current_string += c;
+			break;
+		case '}':
+		case ')':
+			if (delims.empty() || delims.back() != c) {
+				throw InvalidInputException("Failed to convert list %s - mismatch in brackets", list.GetString());
+			}
+			delims.pop_back();
+			current_string += c;
+			break;
 		case '"':
 			quoted = true;
 			was_quoted = true;
 			break;
 		case ',':
+			if (!delims.empty()) {
+				// in a nested struct
+				current_string += c;
+				break;
+			}
 			// next element
 			if (!current_string.empty() || was_quoted) {
 				parser.AddString(current_string, was_quoted);

@@ -71,8 +71,10 @@ bool PostgresBinaryReader::Next() {
 	if (len == -1) {
 		auto final_result = PQgetResult(con.GetConn());
 		if (!final_result || PQresultStatus(final_result) != PGRES_COMMAND_OK) {
+			PQclear(final_result);
 			throw IOException("Failed to fetch header for COPY: %s", string(PQresultErrorMessage(final_result)));
 		}
+		PQclear(final_result);
 		return false;
 	}
 
@@ -90,8 +92,10 @@ bool PostgresBinaryReader::Next() {
 void PostgresBinaryReader::CheckResult() {
 	auto result = PQgetResult(con.GetConn());
 	if (!result || PQresultStatus(result) != PGRES_COMMAND_OK) {
+		PQclear(result);
 		throw std::runtime_error("Failed to execute COPY: " + string(PQresultErrorMessage(result)));
 	}
+	PQclear(result);
 }
 
 void PostgresBinaryReader::Reset() {

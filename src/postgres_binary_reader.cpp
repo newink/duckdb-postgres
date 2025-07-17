@@ -25,16 +25,16 @@ PostgresReadResult PostgresBinaryReader::Read(DataChunk &output) {
 		while (!Ready()) {
 			if (!Next()) {
 				// finished this batch
-				CheckResult();
 				return PostgresReadResult::FINISHED;
 			}
 		}
 
 		// read a row
 		auto tuple_count = ReadInteger<int16_t>();
-		if (tuple_count <= 0) { // done here, lets try to get more
+		if (tuple_count <= 0) {
+			// tuple_count of -1 signifies the file trailer (i.e. footer) - reset and skip
 			Reset();
-			return PostgresReadResult::FINISHED;
+			continue;
 		}
 
 		D_ASSERT(tuple_count == column_ids.size());
@@ -69,9 +69,16 @@ bool PostgresBinaryReader::Next() {
 
 	// len -1 signals end
 	if (len == -1) {
-		auto final_result = PQgetResult(con.GetConn());
-		if (!final_result || PQresultStatus(final_result) != PGRES_COMMAND_OK) {
-			throw IOException("Failed to fetch header for COPY: %s", string(PQresultErrorMessage(final_result)));
+		// consume all available results
+		while (true) {
+			PostgresResult pg_res(PQgetResult(con.GetConn()));
+			auto final_result = pg_res.res;
+			if (!final_result) {
+				break;
+			}
+			if (PQresultStatus(final_result) != PGRES_COMMAND_OK) {
+				throw IOException("Failed to fetch header for COPY: %s", string(PQresultErrorMessage(final_result)));
+			}
 		}
 		return false;
 	}

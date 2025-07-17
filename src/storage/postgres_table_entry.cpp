@@ -39,7 +39,7 @@ TableFunction PostgresTableEntry::GetScanFunction(ClientContext &context, unique
 	auto &pg_catalog = catalog.Cast<PostgresCatalog>();
 	auto &transaction = Transaction::Get(context, catalog).Cast<PostgresTransaction>();
 
-	auto result = make_uniq<PostgresBindData>();
+	auto result = make_uniq<PostgresBindData>(context);
 
 	result->schema_name = schema.name;
 	result->table_name = name;

@@ -74,6 +74,7 @@ unique_ptr<PostgresResult> PostgresConnection::TryQuery(const string &query, opt
 			*error_message = StringUtil::Format("Failed to execute query \"" + query +
 			                                    "\": " + string(PQresultErrorMessage(result)));
 		}
+		PQclear(result);
 		return nullptr;
 	}
 	return make_uniq<PostgresResult>(result);
@@ -107,10 +108,12 @@ vector<unique_ptr<PostgresResult>> PostgresConnection::ExecuteQueries(const stri
 			break;
 		}
 		if (ResultHasError(res)) {
+			PQclear(res);
 			throw std::runtime_error("Failed to execute query \"" + queries +
 			                         "\": " + string(PQresultErrorMessage(res)));
 		}
 		if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+			PQclear(res);
 			continue;
 		}
 		auto result = make_uniq<PostgresResult>(res);

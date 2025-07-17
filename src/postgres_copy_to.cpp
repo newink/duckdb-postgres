@@ -58,8 +58,10 @@ void PostgresConnection::BeginCopyTo(ClientContext &context, PostgresCopyState &
 
 	auto result = PQExecute(query.c_str());
 	if (!result || PQresultStatus(result) != PGRES_COPY_IN) {
+		PQclear(result);
 		throw std::runtime_error("Failed to prepare COPY \"" + query + "\": " + string(PQresultErrorMessage(result)));
 	}
+	PQclear(result);
 	if (state.format == PostgresCopyFormat::BINARY) {
 		// binary copy requires a header
 		PostgresBinaryWriter writer(state);
@@ -106,8 +108,10 @@ void PostgresConnection::FinishCopyTo(PostgresCopyState &state) {
 	// fetch the query result to check for errors
 	auto result = PQgetResult(GetConn());
 	if (!result || PQresultStatus(result) != PGRES_COMMAND_OK) {
+		PQclear(result);
 		throw std::runtime_error("Failed to copy data: " + string(PQresultErrorMessage(result)));
 	}
+	PQclear(result);
 }
 
 bool NeedsQuotes(const string &to_quote, idx_t size) {

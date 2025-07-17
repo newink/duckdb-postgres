@@ -1,4 +1,4 @@
-# name: test/sql/storage/attach_secret.test
+# name: test/sql/storage/attach_show_all_tables.test
 # description: Test attaching using a secret
 # group: [storage]
 

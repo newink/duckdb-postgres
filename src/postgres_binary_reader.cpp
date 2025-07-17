@@ -94,15 +94,6 @@ bool PostgresBinaryReader::Next() {
 	return true;
 }
 
-void PostgresBinaryReader::CheckResult() {
-	auto result = PQgetResult(con.GetConn());
-	if (!result || PQresultStatus(result) != PGRES_COMMAND_OK) {
-		PQclear(result);
-		throw std::runtime_error("Failed to execute COPY: " + string(PQresultErrorMessage(result)));
-	}
-	PQclear(result);
-}
-
 void PostgresBinaryReader::Reset() {
 	if (buffer) {
 		PQfreemem(buffer);

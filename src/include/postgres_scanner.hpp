@@ -22,6 +22,9 @@ class PostgresTransaction;
 struct PostgresBindData : public FunctionData {
 	static constexpr const idx_t DEFAULT_PAGES_PER_TASK = 1000;
 
+public:
+	PostgresBindData(ClientContext &context);
+
 	PostgresVersion version;
 	string schema_name;
 	string table_name;

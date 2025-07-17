@@ -24,7 +24,6 @@ public:
 
 protected:
 	bool Next();
-	void CheckResult();
 
 	void Reset();
 	bool Ready();

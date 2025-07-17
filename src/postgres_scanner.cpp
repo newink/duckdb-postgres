@@ -115,12 +115,9 @@ void PostgresScanFunction::PrepareBind(PostgresVersion version, ClientContext &c
 	if (context.TryGetCurrentSetting("pg_use_ctid_scan", pg_use_ctid_scan)) {
 		use_ctid_scan = BooleanValue::Get(pg_use_ctid_scan);
 	}
-	Value use_text_protocol;
-	if (context.TryGetCurrentSetting("pg_use_text_protocol", use_text_protocol)) {
-		if (BooleanValue::Get(use_text_protocol)) {
-			bind_data.use_text_protocol = true;
-			use_ctid_scan = false;
-		}
+	if (bind_data.use_text_protocol) {
+		// ctid scan is only supported for binary copy
+		use_ctid_scan = false;
 	}
 
 	if (version.major_v < 14) {
@@ -133,6 +130,15 @@ void PostgresScanFunction::PrepareBind(PostgresVersion version, ClientContext &c
 	}
 	bind_data.SetTablePages(approx_num_pages);
 	bind_data.version = version;
+}
+
+PostgresBindData::PostgresBindData(ClientContext &context) {
+	Value text_protocol;
+	if (context.TryGetCurrentSetting("pg_use_text_protocol", text_protocol)) {
+		if (BooleanValue::Get(text_protocol)) {
+			use_text_protocol = true;
+		}
+	}
 }
 
 void PostgresBindData::SetTablePages(idx_t approx_num_pages) {
@@ -166,7 +172,7 @@ void PostgresBindData::SetTable(PostgresTableEntry &table) {
 
 static unique_ptr<FunctionData> PostgresBind(ClientContext &context, TableFunctionBindInput &input,
                                              vector<LogicalType> &return_types, vector<string> &names) {
-	auto bind_data = make_uniq<PostgresBindData>();
+	auto bind_data = make_uniq<PostgresBindData>(context);
 
 	bind_data->dsn = input.inputs[0].GetValue<string>();
 	bind_data->schema_name = input.inputs[1].GetValue<string>();

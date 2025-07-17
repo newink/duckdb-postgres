@@ -21,7 +21,7 @@ static unique_ptr<Catalog> PostgresAttach(StorageExtensionInfo *storage_info, Cl
 	PostgresIsolationLevel isolation_level = PostgresIsolationLevel::REPEATABLE_READ;
 	for (auto &entry : info.options) {
 		auto lower_name = StringUtil::Lower(entry.first);
-		if (lower_name == "type" || lower_name == "read_only") {
+		if (lower_name == "type" || lower_name == "read_only" || lower_name == "read_write") {
 			// already handled
 		} else if (lower_name == "secret") {
 			secret_name = entry.second.ToString();

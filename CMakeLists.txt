@@ -93,6 +93,8 @@ if(WIN32)
       postgres/src/port/open.c
       postgres/src/port/pgsleep.c
       postgres/src/port/system.c
+      postgres/src/port/dirmod.c
+      postgres/src/port/win32common.c
       postgres/src/port/win32error.c
       postgres/src/port/win32ntdll.c
       postgres/src/port/win32setlocale.c

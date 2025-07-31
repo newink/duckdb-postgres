@@ -92,6 +92,7 @@ string PostgresCatalog::GetConnectionString(ClientContext &context, const string
 		new_connection_info += AddConnectionOption(kv_secret, "host");
 		new_connection_info += AddConnectionOption(kv_secret, "port");
 		new_connection_info += AddConnectionOption(kv_secret, "dbname");
+		new_connection_info += AddConnectionOption(kv_secret, "passfile");
 
 		connection_string = new_connection_info + connection_string;
 	} else if (explicit_secret) {

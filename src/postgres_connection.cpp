@@ -68,6 +68,7 @@ PGresult *PostgresConnection::PQExecute(const string &query) {
 }
 
 unique_ptr<PostgresResult> PostgresConnection::TryQuery(const string &query, optional_ptr<string> error_message) {
+	lock_guard<mutex> guard(connection->connection_lock);
 	auto result = PQExecute(query.c_str());
 	if (ResultHasError(result)) {
 		if (error_message) {

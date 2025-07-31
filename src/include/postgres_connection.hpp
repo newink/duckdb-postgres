@@ -24,9 +24,12 @@ struct IndexInfo;
 
 struct OwnedPostgresConnection {
 	explicit OwnedPostgresConnection(PGconn *conn = nullptr);
+	OwnedPostgresConnection(const OwnedPostgresConnection &) = delete;
+	OwnedPostgresConnection &operator=(const OwnedPostgresConnection &) = delete;
 	~OwnedPostgresConnection();
 
 	PGconn *connection;
+	mutex connection_lock;
 };
 
 class PostgresConnection {

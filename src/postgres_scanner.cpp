@@ -2,7 +2,7 @@
 
 #include <libpq-fe.h>
 
-#include "duckdb/main/extension_util.hpp"
+#include "duckdb/main/extension/extension_loader.hpp"
 #include "duckdb/common/shared_ptr.hpp"
 #include "duckdb/common/helper.hpp"
 #include "duckdb/parser/parsed_data/create_table_function_info.hpp"

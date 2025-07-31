@@ -8,8 +8,10 @@
 
 namespace duckdb {
 
-PostgresUpdate::PostgresUpdate(LogicalOperator &op, TableCatalogEntry &table, vector<PhysicalIndex> columns_p)
-    : PhysicalOperator(PhysicalOperatorType::EXTENSION, op.types, 1), table(table), columns(std::move(columns_p)) {
+PostgresUpdate::PostgresUpdate(PhysicalPlan &physical_plan, LogicalOperator &op, TableCatalogEntry &table,
+                               vector<PhysicalIndex> columns_p)
+    : PhysicalOperator(physical_plan, PhysicalOperatorType::EXTENSION, op.types, 1), table(table),
+      columns(std::move(columns_p)) {
 }
 
 //===--------------------------------------------------------------------===//

@@ -15,7 +15,8 @@ namespace duckdb {
 
 class PostgresUpdate : public PhysicalOperator {
 public:
-	PostgresUpdate(LogicalOperator &op, TableCatalogEntry &table, vector<PhysicalIndex> columns);
+	PostgresUpdate(PhysicalPlan &physical_plan, LogicalOperator &op, TableCatalogEntry &table,
+	               vector<PhysicalIndex> columns);
 
 	//! The table to delete from
 	TableCatalogEntry &table;

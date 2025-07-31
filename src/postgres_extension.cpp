@@ -8,7 +8,7 @@
 
 #include "duckdb/catalog/catalog.hpp"
 #include "duckdb/parser/parsed_data/create_table_function_info.hpp"
-#include "duckdb/main/extension_util.hpp"
+#include "duckdb/main/extension/extension_loader.hpp"
 #include "duckdb/common/helper.hpp"
 #include "duckdb/main/database_manager.hpp"
 #include "duckdb/main/attached_database.hpp"
@@ -125,27 +125,27 @@ void SetPostgresNullByteReplacement(ClientContext &context, SetScope scope, Valu
 	}
 }
 
-static void LoadInternal(DatabaseInstance &db) {
+static void LoadInternal(ExtensionLoader &loader) {
 	PostgresScanFunction postgres_fun;
-	ExtensionUtil::RegisterFunction(db, postgres_fun);
+	loader.RegisterFunction(postgres_fun);
 
 	PostgresScanFunctionFilterPushdown postgres_fun_filter_pushdown;
-	ExtensionUtil::RegisterFunction(db, postgres_fun_filter_pushdown);
+	loader.RegisterFunction(postgres_fun_filter_pushdown);
 
 	PostgresAttachFunction attach_func;
-	ExtensionUtil::RegisterFunction(db, attach_func);
+	loader.RegisterFunction(attach_func);
 
 	PostgresClearCacheFunction clear_cache_func;
-	ExtensionUtil::RegisterFunction(db, clear_cache_func);
+	loader.RegisterFunction(clear_cache_func);
 
 	PostgresQueryFunction query_func;
-	ExtensionUtil::RegisterFunction(db, query_func);
+	loader.RegisterFunction(query_func);
 
 	PostgresExecuteFunction execute_func;
-	ExtensionUtil::RegisterFunction(db, execute_func);
+	loader.RegisterFunction(execute_func);
 
 	PostgresBinaryCopyFunction binary_copy;
-	ExtensionUtil::RegisterFunction(db, binary_copy);
+	loader.RegisterFunction(binary_copy);
 
 	// Register the new type
 	SecretType secret_type;
@@ -153,13 +153,13 @@ static void LoadInternal(DatabaseInstance &db) {
 	secret_type.deserializer = KeyValueSecret::Deserialize<KeyValueSecret>;
 	secret_type.default_provider = "config";
 
-	ExtensionUtil::RegisterSecretType(db, secret_type);
+	loader.RegisterSecretType(secret_type);
 
 	CreateSecretFunction postgres_secret_function = {"postgres", "config", CreatePostgresSecretFunction};
 	SetPostgresSecretParameters(postgres_secret_function);
-	ExtensionUtil::RegisterFunction(db, postgres_secret_function);
+	loader.RegisterFunction(postgres_secret_function);
 
-	auto &config = DBConfig::GetConfig(db);
+	auto &config = DBConfig::GetConfig(loader.GetDatabaseInstance());
 	config.storage_extensions["postgres_scanner"] = make_uniq<PostgresStorageExtension>();
 
 	config.AddExtensionOption("pg_use_binary_copy", "Whether or not to use BINARY copy to read data",
@@ -193,26 +193,18 @@ static void LoadInternal(DatabaseInstance &db) {
 	config.optimizer_extensions.push_back(std::move(postgres_optimizer));
 
 	config.extension_callbacks.push_back(make_uniq<PostgresExtensionCallback>());
-	for (auto &connection : ConnectionManager::Get(db).GetConnectionList()) {
+	for (auto &connection : ConnectionManager::Get(loader.GetDatabaseInstance()).GetConnectionList()) {
 		connection->registered_state->Insert("postgres_extension", make_shared_ptr<PostgresExtensionState>());
 	}
 }
 
-void PostgresScannerExtension::Load(DuckDB &db) {
-	LoadInternal(*db.instance);
+void PostgresScannerExtension::Load(ExtensionLoader &loader) {
+	LoadInternal(loader);
 }
 
 extern "C" {
 
-DUCKDB_EXTENSION_API void postgres_scanner_init(duckdb::DatabaseInstance &db) {
-	LoadInternal(db);
-}
-
-DUCKDB_EXTENSION_API const char *postgres_scanner_version() {
-	return DuckDB::LibraryVersion();
-}
-
-DUCKDB_EXTENSION_API void postgres_scanner_storage_init(DBConfig &config) {
-	config.storage_extensions["postgres_scanner"] = make_uniq<PostgresStorageExtension>();
+DUCKDB_CPP_EXTENSION_ENTRY(postgres_scanner, loader) {
+	LoadInternal(loader);
 }
 }

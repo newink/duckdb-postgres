@@ -32,6 +32,11 @@ unique_ptr<MergeIntoOperator> PostgresPlanMergeIntoAction(PostgresCatalog &catal
 
 	switch (action.action_type) {
 	case MergeActionType::MERGE_UPDATE: {
+		if (action.columns.empty()) {
+			// not updating any columns
+			result->action_type = MergeActionType::MERGE_DO_NOTHING;
+			break;
+		}
 		LogicalUpdate update(op.table);
 		for (auto &def : op.bound_defaults) {
 			update.bound_defaults.push_back(def->Copy());

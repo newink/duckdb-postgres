@@ -46,16 +46,14 @@ string CreateUpdateTable(const string &name, PostgresTableEntry &table, const ve
 	result = "CREATE LOCAL TEMPORARY TABLE " + PostgresUtils::QuotePostgresIdentifier(name);
 	result += "(";
 	for (idx_t i = 0; i < index.size(); i++) {
-		if (i > 0) {
-			result += ", ";
-		}
 		auto &column_name = table.postgres_names[index[i].index];
 		auto &col = table.GetColumn(LogicalIndex(index[i].index));
 		result += KeywordHelper::WriteQuoted(column_name, '"');
 		result += " ";
 		result += PostgresUtils::TypeToString(col.GetType());
+		result += ", ";
 	}
-	result += ", __page_id_string VARCHAR) ON COMMIT DROP;";
+	result += "__page_id_string VARCHAR) ON COMMIT DROP;";
 	return result;
 }
 

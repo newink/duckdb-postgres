@@ -3,6 +3,7 @@
 #include "storage/postgres_transaction.hpp"
 #include "duckdb/storage/statistics/base_statistics.hpp"
 #include "duckdb/storage/table_storage_info.hpp"
+#include "duckdb/parser/constraints/unique_constraint.hpp"
 #include "postgres_scanner.hpp"
 
 namespace duckdb {
@@ -68,7 +69,25 @@ TableStorageInfo PostgresTableEntry::GetStorageInfo(ClientContext &context) {
 	auto &db = transaction.GetConnection();
 	TableStorageInfo result;
 	result.cardinality = 0;
-	result.index_info = db.GetIndexInfo(name);
+	// get index info based on constraints
+	for (auto &constraint : constraints) {
+		if (constraint->type != ConstraintType::UNIQUE) {
+			continue;
+		}
+		IndexInfo info;
+		auto &unique = constraint->Cast<UniqueConstraint>();
+		info.is_unique = true;
+		info.is_primary = unique.IsPrimaryKey();
+		info.is_foreign = false;
+		if (unique.HasIndex()) {
+			info.column_set.insert(unique.GetIndex().index);
+		} else {
+			for (auto &name : unique.GetColumnNames()) {
+				info.column_set.insert(columns.GetColumn(name).Logical().index);
+			}
+		}
+		result.index_info.push_back(std::move(info));
+	}
 	return result;
 }
 

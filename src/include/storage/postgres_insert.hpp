@@ -30,6 +30,8 @@ public:
 	unique_ptr<BoundCreateTableInfo> info;
 	//! column_index_map
 	physical_index_vector_t<idx_t> column_index_map;
+	//! Whether or not we can keep the copy alive during Sink calls
+	bool keep_copy_alive = true;
 
 public:
 	// Source interface

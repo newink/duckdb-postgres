@@ -26,6 +26,7 @@ optional_ptr<CatalogEntry> PostgresCatalogSet::GetEntry(ClientContext &context, 
 			return entry;
 		}
 	}
+	lock_guard<mutex> l(entry_lock);
 	// check the case insensitive map if there are any entries
 	auto name_entry = entry_map.find(name);
 	if (name_entry == entry_map.end()) {

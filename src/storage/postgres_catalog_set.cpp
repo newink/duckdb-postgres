@@ -100,6 +100,7 @@ optional_ptr<CatalogEntry> PostgresCatalogSet::CreateEntry(unique_ptr<CatalogEnt
 }
 
 void PostgresCatalogSet::ClearEntries() {
+	lock_guard<mutex> entry_guard(entry_lock);
 	entry_map.clear();
 	entries.clear();
 	is_loaded = false;

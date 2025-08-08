@@ -10,11 +10,16 @@
   ],
   "skip_error_messages": [
     "RETURNING is not implemented for Postgres yet",
-    "RETURNING clause not yet supported for insertion into Postgres table",
+    "RETURNING clause not yet supported",
     "SET DEFAULT is not yet supported for updates of a Postgres table",
     "Composite types in Postgres must be named",
     "Vacuum is only implemented for DuckDB tables",
-    "Postgres databases do not support creating sequences"
+    "Postgres databases do not support creating sequences",
+    "Postgres databases do not support creating functions",
+    "Unsupported type for CREATE TYPE in Postgres",
+    "Unsupported ALTER TABLE type",
+    "Enums in Postgres must be named",
+    "Only altering tables is supported for now"
   ],
   "skip_tests": [
     {

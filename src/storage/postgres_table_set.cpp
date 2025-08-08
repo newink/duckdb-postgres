@@ -238,7 +238,14 @@ string PostgresColumnsToSQL(const ColumnList &columns, const vector<unique_ptr<C
 						multi_key_pks.insert(col);
 					}
 				}
-				extra_constraints.push_back(constraint->ToString());
+				string base = pk.is_primary_key ? "PRIMARY KEY(" : "UNIQUE(";
+				for (idx_t i = 0; i < pk.columns.size(); i++) {
+					if (i > 0) {
+						base += ", ";
+					}
+					base += KeywordHelper::WriteQuoted(pk.columns[i], '"');
+				}
+				extra_constraints.push_back(base + ")");
 			}
 		} else if (constraint->type == ConstraintType::FOREIGN_KEY) {
 			auto &fk = constraint->Cast<ForeignKeyConstraint>();

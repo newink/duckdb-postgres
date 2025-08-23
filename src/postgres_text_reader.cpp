@@ -365,7 +365,14 @@ PostgresReadResult PostgresTextReader::Read(DataChunk &output) {
 		}
 	}
 	output.SetCardinality(scan_chunk.size());
-	return row_offset < result->Count() ? PostgresReadResult::HAVE_MORE_TUPLES : PostgresReadResult::FINISHED;
+
+	bool finished = row_offset >= result->Count();
+	if (finished) {
+		// The result set is fully consumed. Reset immediately to free the PGresult.
+		Reset();
+		return PostgresReadResult::FINISHED;
+	}
+	return PostgresReadResult::HAVE_MORE_TUPLES;
 }
 
 void PostgresTextReader::Reset() {

@@ -8,6 +8,9 @@ set(OPENSSL_USE_STATIC_LIBS TRUE)
 
 find_package(OpenSSL REQUIRED)
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GSSAPI REQUIRED krb5-gssapi)
+
 if(NOT MSVC)
   set(POSTGRES_SCANNER_EXTRA_CFLAGS
       "-Wno-pedantic -Wno-sign-compare -Wno-unused-variable")
@@ -29,7 +32,7 @@ set(CMAKE_C_FLAGS_RELWITHDEBINFO
     "${CMAKE_C_FLAGS_RELWITHDEBINFO} ${POSTGRES_SCANNER_EXTRA_CFLAGS}")
 
 include_directories(include postgres/src/include postgres/src/backend
-                    postgres/src/interfaces/libpq ${OPENSSL_INCLUDE_DIR})
+                    postgres/src/interfaces/libpq ${OPENSSL_INCLUDE_DIR} ${GSSAPI_INCLUDE_DIRS})
 
 if(WIN32)
   include_directories(postgres/src/include/port/win32 postgres/src/port
@@ -170,7 +173,7 @@ if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/postgres)
     execute_process(
       COMMAND
         ./configure --without-llvm --without-icu --without-tcl --without-perl
-        --without-python --without-gssapi --without-pam --without-bsd-auth
+        --without-python --with-gssapi --without-pam --without-bsd-auth
         --without-ldap --without-bonjour --without-selinux --without-systemd
         --without-readline --without-libxml --without-libxslt --without-zlib
         --without-lz4 --without-openssl
@@ -192,7 +195,7 @@ build_loadable_extension(${TARGET_NAME} ${PARAMETERS} ${ALL_OBJECT_FILES}
 target_include_directories(
   ${TARGET_NAME}_loadable_extension
   PRIVATE include postgres/src/include postgres/src/backend
-          postgres/src/interfaces/libpq ${OPENSSL_INCLUDE_DIR})
+          postgres/src/interfaces/libpq ${OPENSSL_INCLUDE_DIR} ${GSSAPI_INCLUDE_DIRS})
 
 if(WIN32)
   target_include_directories(
@@ -201,7 +204,7 @@ if(WIN32)
             postgres/src/include/port/win32_msvc)
 endif()
 
-target_link_libraries(${TARGET_NAME}_loadable_extension ${OPENSSL_LIBRARIES})
+target_link_libraries(${TARGET_NAME}_loadable_extension ${OPENSSL_LIBRARIES} ${GSSAPI_LIBRARIES})
 set_property(TARGET ${TARGET_NAME}_loadable_extension PROPERTY C_STANDARD 99)
 
 if(WIN32)

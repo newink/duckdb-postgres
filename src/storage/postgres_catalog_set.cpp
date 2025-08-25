@@ -17,29 +17,27 @@ optional_ptr<CatalogEntry> PostgresCatalogSet::GetEntry(ClientContext &context, 
 			// entry found
 			return entry->second.get();
 		}
+		// check the case insensitive map if there are any entries
+		auto name_entry = entry_map.find(name);
+		if (name_entry != entry_map.end()) {
+			// try again with the entry we found in the case insensitive map
+			auto entry = entries.find(name_entry->second);
+			if (entry != entries.end()) {
+				// still not found
+				return entry->second.get();
+			}
+		}
 	}
 	// entry not found
 	if (SupportReload()) {
+		lock_guard<mutex> lock(load_lock);
 		// try loading entries again - maybe there has been a change remotely
 		auto entry = ReloadEntry(context, name);
 		if (entry) {
 			return entry;
 		}
 	}
-	lock_guard<mutex> l(entry_lock);
-	// check the case insensitive map if there are any entries
-	auto name_entry = entry_map.find(name);
-	if (name_entry == entry_map.end()) {
-		// no entry found
-		return nullptr;
-	}
-	// try again with the entry we found in the case insensitive map
-	auto entry = entries.find(name_entry->second);
-	if (entry == entries.end()) {
-		// still not found
-		return nullptr;
-	}
-	return entry->second.get();
+	return nullptr;
 }
 
 void PostgresCatalogSet::TryLoadEntries(ClientContext &context) {

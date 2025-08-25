@@ -15,7 +15,7 @@ optional_ptr<CatalogEntry> PostgresCatalogSet::GetEntry(PostgresTransaction &tra
 		auto entry = entries.find(name);
 		if (entry != entries.end()) {
 			// entry found
-			return entry->second.get();
+			return transaction.ReferenceEntry(entry->second);
 		}
 		// check the case insensitive map if there are any entries
 		auto name_entry = entry_map.find(name);
@@ -24,7 +24,7 @@ optional_ptr<CatalogEntry> PostgresCatalogSet::GetEntry(PostgresTransaction &tra
 			auto entry = entries.find(name_entry->second);
 			if (entry != entries.end()) {
 				// still not found
-				return entry->second.get();
+				return transaction.ReferenceEntry(entry->second);
 			}
 		}
 	}
@@ -87,9 +87,9 @@ void PostgresCatalogSet::Scan(PostgresTransaction &transaction, const std::funct
 }
 
 optional_ptr<CatalogEntry> PostgresCatalogSet::CreateEntry(PostgresTransaction &transaction,
-                                                           unique_ptr<CatalogEntry> entry) {
+                                                           shared_ptr<CatalogEntry> entry) {
 	lock_guard<mutex> l(entry_lock);
-	auto result = entry.get();
+	auto result = transaction.ReferenceEntry(entry);
 	if (result->name.empty()) {
 		throw InternalException("PostgresCatalogSet::CreateEntry called with empty name");
 	}
@@ -110,7 +110,7 @@ PostgresInSchemaSet::PostgresInSchemaSet(PostgresSchemaEntry &schema, bool is_lo
 }
 
 optional_ptr<CatalogEntry> PostgresInSchemaSet::CreateEntry(PostgresTransaction &transaction,
-                                                            unique_ptr<CatalogEntry> entry) {
+                                                            shared_ptr<CatalogEntry> entry) {
 	entry->internal = schema.internal;
 	return PostgresCatalogSet::CreateEntry(transaction, std::move(entry));
 }

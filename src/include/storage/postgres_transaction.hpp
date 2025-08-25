@@ -38,6 +38,8 @@ public:
 	vector<unique_ptr<PostgresResult>> ExecuteQueries(const string &queries);
 	static PostgresTransaction &Get(ClientContext &context, Catalog &catalog);
 
+	optional_ptr<CatalogEntry> ReferenceEntry(shared_ptr<CatalogEntry> &entry);
+
 	string GetTemporarySchema();
 
 private:
@@ -46,6 +48,7 @@ private:
 	AccessMode access_mode;
 	PostgresIsolationLevel isolation_level;
 	string temporary_schema;
+	reference_map_t<CatalogEntry, shared_ptr<CatalogEntry>> referenced_entries;
 
 private:
 	//! Retrieves the connection **without** starting a transaction if none is active

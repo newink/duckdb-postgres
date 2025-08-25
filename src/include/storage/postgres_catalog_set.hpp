@@ -26,7 +26,7 @@ public:
 	optional_ptr<CatalogEntry> GetEntry(PostgresTransaction &transaction, const string &name);
 	void DropEntry(PostgresTransaction &transaction, DropInfo &info);
 	void Scan(PostgresTransaction &transaction, const std::function<void(CatalogEntry &)> &callback);
-	virtual optional_ptr<CatalogEntry> CreateEntry(PostgresTransaction &transaction, unique_ptr<CatalogEntry> entry);
+	virtual optional_ptr<CatalogEntry> CreateEntry(PostgresTransaction &transaction, shared_ptr<CatalogEntry> entry);
 	void ClearEntries();
 	virtual bool SupportReload() const {
 		return false;
@@ -48,7 +48,7 @@ protected:
 private:
 	mutex entry_lock;
 	mutex load_lock;
-	unordered_map<string, unique_ptr<CatalogEntry>> entries;
+	unordered_map<string, shared_ptr<CatalogEntry>> entries;
 	case_insensitive_map_t<string> entry_map;
 	atomic<bool> is_loaded;
 };
@@ -57,7 +57,7 @@ class PostgresInSchemaSet : public PostgresCatalogSet {
 public:
 	PostgresInSchemaSet(PostgresSchemaEntry &schema, bool is_loaded);
 
-	optional_ptr<CatalogEntry> CreateEntry(PostgresTransaction &transaction, unique_ptr<CatalogEntry> entry) override;
+	optional_ptr<CatalogEntry> CreateEntry(PostgresTransaction &transaction, shared_ptr<CatalogEntry> entry) override;
 
 protected:
 	PostgresSchemaEntry &schema;

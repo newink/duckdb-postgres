@@ -118,6 +118,12 @@ vector<unique_ptr<PostgresResult>> PostgresTransaction::ExecuteQueries(const str
 	return con.ExecuteQueries(queries);
 }
 
+optional_ptr<CatalogEntry> PostgresTransaction::ReferenceEntry(shared_ptr<CatalogEntry> &entry) {
+	auto &ref = *entry;
+	referenced_entries.emplace(ref, entry);
+	return ref;
+}
+
 string PostgresTransaction::GetTemporarySchema() {
 	if (temporary_schema.empty()) {
 		auto result = Query("SELECT nspname FROM pg_namespace WHERE oid = pg_my_temp_schema();");

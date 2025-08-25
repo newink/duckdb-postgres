@@ -138,7 +138,7 @@ void PostgresTableSet::CreateEntries(PostgresTransaction &transaction, PostgresR
 		tables.push_back(std::move(info));
 	}
 	for (auto &tbl_info : tables) {
-		auto table_entry = make_uniq<PostgresTableEntry>(catalog, schema, *tbl_info);
+		auto table_entry = make_shared_ptr<PostgresTableEntry>(catalog, schema, *tbl_info);
 		CreateEntry(transaction, std::move(table_entry));
 	}
 }
@@ -194,10 +194,8 @@ optional_ptr<CatalogEntry> PostgresTableSet::ReloadEntry(PostgresTransaction &tr
 	if (!table_info) {
 		return nullptr;
 	}
-	auto table_entry = make_uniq<PostgresTableEntry>(catalog, schema, *table_info);
-	auto table_ptr = table_entry.get();
-	CreateEntry(transaction, std::move(table_entry));
-	return table_ptr;
+	auto table_entry = make_shared_ptr<PostgresTableEntry>(catalog, schema, *table_info);
+	return CreateEntry(transaction, std::move(table_entry));
 }
 
 // FIXME - this is almost entirely copied from TableCatalogEntry::ColumnsToSQL - should be unified
@@ -318,7 +316,7 @@ string GetPostgresCreateTable(CreateTableInfo &info) {
 optional_ptr<CatalogEntry> PostgresTableSet::CreateTable(PostgresTransaction &transaction, BoundCreateTableInfo &info) {
 	auto create_sql = GetPostgresCreateTable(info.Base());
 	transaction.Query(create_sql);
-	auto tbl_entry = make_uniq<PostgresTableEntry>(catalog, schema, info.Base());
+	auto tbl_entry = make_shared_ptr<PostgresTableEntry>(catalog, schema, info.Base());
 	return CreateEntry(transaction, std::move(tbl_entry));
 }
 

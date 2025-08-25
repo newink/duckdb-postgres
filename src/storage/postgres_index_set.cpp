@@ -38,7 +38,7 @@ void PostgresIndexSet::LoadEntries(PostgresTransaction &transaction) {
 		info.schema = schema.name;
 		info.table = table_name;
 		info.index_name = index_name;
-		auto index_entry = make_uniq<PostgresIndexEntry>(catalog, schema, info, table_name);
+		auto index_entry = make_shared_ptr<PostgresIndexEntry>(catalog, schema, info, table_name);
 		CreateEntry(transaction, std::move(index_entry));
 	}
 	index_result.reset();
@@ -80,7 +80,7 @@ string PGGetCreateIndexSQL(CreateIndexInfo &info, TableCatalogEntry &tbl) {
 optional_ptr<CatalogEntry> PostgresIndexSet::CreateIndex(PostgresTransaction &transaction, CreateIndexInfo &info,
                                                          TableCatalogEntry &table) {
 	transaction.Query(PGGetCreateIndexSQL(info, table));
-	auto index_entry = make_uniq<PostgresIndexEntry>(schema.ParentCatalog(), schema, info, table.name);
+	auto index_entry = make_shared_ptr<PostgresIndexEntry>(schema.ParentCatalog(), schema, info, table.name);
 	return CreateEntry(transaction, std::move(index_entry));
 }
 

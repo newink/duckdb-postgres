@@ -74,8 +74,8 @@ void PostgresSchemaSet::LoadEntries(PostgresTransaction &transaction) {
 		CreateSchemaInfo info;
 		info.schema = schema_name;
 		info.internal = PostgresSchemaEntry::SchemaIsInternal(schema_name);
-		auto schema = make_uniq<PostgresSchemaEntry>(catalog, info, std::move(tables[row]), std::move(enums[row]),
-		                                             std::move(composite_types[row]), std::move(indexes[row]));
+		auto schema = make_shared_ptr<PostgresSchemaEntry>(catalog, info, std::move(tables[row]), std::move(enums[row]),
+		                                                   std::move(composite_types[row]), std::move(indexes[row]));
 		CreateEntry(transaction, std::move(schema));
 	}
 }
@@ -89,7 +89,7 @@ optional_ptr<CatalogEntry> PostgresSchemaSet::CreateSchema(PostgresTransaction &
 	transaction.Query(create_sql);
 	auto info_copy = info.Copy();
 	info.internal = PostgresSchemaEntry::SchemaIsInternal(info_copy->schema);
-	auto schema_entry = make_uniq<PostgresSchemaEntry>(catalog, info_copy->Cast<CreateSchemaInfo>());
+	auto schema_entry = make_shared_ptr<PostgresSchemaEntry>(catalog, info_copy->Cast<CreateSchemaInfo>());
 	return CreateEntry(transaction, std::move(schema_entry));
 }
 

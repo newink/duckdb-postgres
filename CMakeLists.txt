@@ -8,8 +8,17 @@ set(OPENSSL_USE_STATIC_LIBS TRUE)
 
 find_package(OpenSSL REQUIRED)
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(GSSAPI REQUIRED krb5-gssapi)
+find_library(GSSAPI_LIBRARIES NAMES gssapi_krb5 gssapi)
+find_path(GSSAPI_INCLUDE_DIRS gssapi/gssapi.h)
+
+if(GSSAPI_LIBRARIES AND GSSAPI_INCLUDE_DIRS)
+  message(STATUS "Found GSSAPI: ${GSSAPI_LIBRARIES}")
+  add_definitions(-DHAVE_GSSAPI=1)
+else()
+  message(WARNING "GSSAPI not found - Kerberos authentication will not be available")
+  set(GSSAPI_LIBRARIES "")
+  set(GSSAPI_INCLUDE_DIRS "")
+endif()
 
 if(NOT MSVC)
   set(POSTGRES_SCANNER_EXTRA_CFLAGS
@@ -31,8 +40,13 @@ set(CMAKE_C_FLAGS_RELEASE
 set(CMAKE_C_FLAGS_RELWITHDEBINFO
     "${CMAKE_C_FLAGS_RELWITHDEBINFO} ${POSTGRES_SCANNER_EXTRA_CFLAGS}")
 
-include_directories(include postgres/src/include postgres/src/backend
-                    postgres/src/interfaces/libpq ${OPENSSL_INCLUDE_DIR} ${GSSAPI_INCLUDE_DIRS})
+if(GSSAPI_INCLUDE_DIRS)
+  include_directories(include postgres/src/include postgres/src/backend
+                      postgres/src/interfaces/libpq ${OPENSSL_INCLUDE_DIR} ${GSSAPI_INCLUDE_DIRS})
+else()
+  include_directories(include postgres/src/include postgres/src/backend
+                      postgres/src/interfaces/libpq ${OPENSSL_INCLUDE_DIR})
+endif()
 
 if(WIN32)
   include_directories(postgres/src/include/port/win32 postgres/src/port
@@ -192,10 +206,17 @@ set(PARAMETERS "-no-warnings")
 build_loadable_extension(${TARGET_NAME} ${PARAMETERS} ${ALL_OBJECT_FILES}
                          ${LIBPG_SOURCES_FULLPATH})
 
-target_include_directories(
-  ${TARGET_NAME}_loadable_extension
-  PRIVATE include postgres/src/include postgres/src/backend
-          postgres/src/interfaces/libpq ${OPENSSL_INCLUDE_DIR} ${GSSAPI_INCLUDE_DIRS})
+if(GSSAPI_INCLUDE_DIRS)
+  target_include_directories(
+    ${TARGET_NAME}_loadable_extension
+    PRIVATE include postgres/src/include postgres/src/backend
+            postgres/src/interfaces/libpq ${OPENSSL_INCLUDE_DIR} ${GSSAPI_INCLUDE_DIRS})
+else()
+  target_include_directories(
+    ${TARGET_NAME}_loadable_extension
+    PRIVATE include postgres/src/include postgres/src/backend
+            postgres/src/interfaces/libpq ${OPENSSL_INCLUDE_DIR})
+endif()
 
 if(WIN32)
   target_include_directories(
@@ -204,7 +225,11 @@ if(WIN32)
             postgres/src/include/port/win32_msvc)
 endif()
 
-target_link_libraries(${TARGET_NAME}_loadable_extension ${OPENSSL_LIBRARIES} ${GSSAPI_LIBRARIES})
+if(GSSAPI_LIBRARIES)
+  target_link_libraries(${TARGET_NAME}_loadable_extension ${OPENSSL_LIBRARIES} ${GSSAPI_LIBRARIES})
+else()
+  target_link_libraries(${TARGET_NAME}_loadable_extension ${OPENSSL_LIBRARIES})
+endif()
 set_property(TARGET ${TARGET_NAME}_loadable_extension PROPERTY C_STANDARD 99)
 
 if(WIN32)

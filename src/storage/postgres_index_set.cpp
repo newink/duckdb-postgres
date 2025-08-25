@@ -26,7 +26,7 @@ ORDER BY pg_namespace.oid;
 	return StringUtil::Replace(base_query, "${CONDITION}", condition);
 }
 
-void PostgresIndexSet::LoadEntries(ClientContext &context) {
+void PostgresIndexSet::LoadEntries(PostgresTransaction &transaction) {
 	if (!index_result) {
 		throw InternalException("PostgresIndexSet::LoadEntries called without an index result defined");
 	}
@@ -39,7 +39,7 @@ void PostgresIndexSet::LoadEntries(ClientContext &context) {
 		info.table = table_name;
 		info.index_name = index_name;
 		auto index_entry = make_uniq<PostgresIndexEntry>(catalog, schema, info, table_name);
-		CreateEntry(std::move(index_entry));
+		CreateEntry(transaction, std::move(index_entry));
 	}
 	index_result.reset();
 }
@@ -77,12 +77,11 @@ string PGGetCreateIndexSQL(CreateIndexInfo &info, TableCatalogEntry &tbl) {
 	return sql;
 }
 
-optional_ptr<CatalogEntry> PostgresIndexSet::CreateIndex(ClientContext &context, CreateIndexInfo &info,
+optional_ptr<CatalogEntry> PostgresIndexSet::CreateIndex(PostgresTransaction &transaction, CreateIndexInfo &info,
                                                          TableCatalogEntry &table) {
-	auto &postgres_transaction = PostgresTransaction::Get(context, table.catalog);
-	postgres_transaction.Query(PGGetCreateIndexSQL(info, table));
+	transaction.Query(PGGetCreateIndexSQL(info, table));
 	auto index_entry = make_uniq<PostgresIndexEntry>(schema.ParentCatalog(), schema, info, table.name);
-	return CreateEntry(std::move(index_entry));
+	return CreateEntry(transaction, std::move(index_entry));
 }
 
 } // namespace duckdb

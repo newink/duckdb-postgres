@@ -16,6 +16,10 @@ PostgresTransaction::PostgresTransaction(PostgresCatalog &postgres_catalog, Tran
 
 PostgresTransaction::~PostgresTransaction() = default;
 
+ClientContext &PostgresTransaction::GetContext() {
+	return *context.lock();
+}
+
 void PostgresTransaction::Start() {
 	transaction_state = PostgresTransactionState::TRANSACTION_NOT_YET_STARTED;
 }

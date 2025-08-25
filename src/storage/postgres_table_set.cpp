@@ -139,12 +139,11 @@ void PostgresTableSet::CreateEntries(PostgresTransaction &transaction, PostgresR
 	}
 	for (auto &tbl_info : tables) {
 		auto table_entry = make_uniq<PostgresTableEntry>(catalog, schema, *tbl_info);
-		CreateEntry(std::move(table_entry));
+		CreateEntry(transaction, std::move(table_entry));
 	}
 }
 
-void PostgresTableSet::LoadEntries(ClientContext &context) {
-	auto &transaction = PostgresTransaction::Get(context, catalog);
+void PostgresTableSet::LoadEntries(PostgresTransaction &transaction) {
 	if (table_result) {
 		CreateEntries(transaction, table_result->GetResult(), table_result->start, table_result->end);
 		table_result.reset();
@@ -190,15 +189,14 @@ unique_ptr<PostgresTableInfo> PostgresTableSet::GetTableInfo(PostgresConnection 
 	return table_info;
 }
 
-optional_ptr<CatalogEntry> PostgresTableSet::ReloadEntry(ClientContext &context, const string &table_name) {
-	auto &transaction = PostgresTransaction::Get(context, catalog);
+optional_ptr<CatalogEntry> PostgresTableSet::ReloadEntry(PostgresTransaction &transaction, const string &table_name) {
 	auto table_info = GetTableInfo(transaction, schema, table_name);
 	if (!table_info) {
 		return nullptr;
 	}
 	auto table_entry = make_uniq<PostgresTableEntry>(catalog, schema, *table_info);
 	auto table_ptr = table_entry.get();
-	CreateEntry(std::move(table_entry));
+	CreateEntry(transaction, std::move(table_entry));
 	return table_ptr;
 }
 
@@ -317,12 +315,11 @@ string GetPostgresCreateTable(CreateTableInfo &info) {
 	return ss.str();
 }
 
-optional_ptr<CatalogEntry> PostgresTableSet::CreateTable(ClientContext &context, BoundCreateTableInfo &info) {
-	auto &transaction = PostgresTransaction::Get(context, catalog);
+optional_ptr<CatalogEntry> PostgresTableSet::CreateTable(PostgresTransaction &transaction, BoundCreateTableInfo &info) {
 	auto create_sql = GetPostgresCreateTable(info.Base());
 	transaction.Query(create_sql);
 	auto tbl_entry = make_uniq<PostgresTableEntry>(catalog, schema, info.Base());
-	return CreateEntry(std::move(tbl_entry));
+	return CreateEntry(transaction, std::move(tbl_entry));
 }
 
 string PostgresTableSet::GetAlterTablePrefix(const string &name, optional_ptr<CatalogEntry> entry) {
@@ -345,22 +342,20 @@ string PostgresTableSet::GetAlterTableColumnName(const string &name, optional_pt
 	return table.postgres_names[column_index.index];
 }
 
-string PostgresTableSet::GetAlterTablePrefix(ClientContext &context, const string &name) {
-	auto entry = GetEntry(context, name);
+string PostgresTableSet::GetAlterTablePrefix(PostgresTransaction &transaction, const string &name) {
+	auto entry = GetEntry(transaction, name);
 	return GetAlterTablePrefix(name, entry);
 }
 
-void PostgresTableSet::AlterTable(ClientContext &context, RenameTableInfo &info) {
-	auto &transaction = PostgresTransaction::Get(context, catalog);
-	string sql = GetAlterTablePrefix(context, info.name);
+void PostgresTableSet::AlterTable(PostgresTransaction &transaction, RenameTableInfo &info) {
+	string sql = GetAlterTablePrefix(transaction, info.name);
 	sql += " RENAME TO ";
 	sql += KeywordHelper::WriteQuoted(info.new_table_name, '"');
 	transaction.Query(sql);
 }
 
-void PostgresTableSet::AlterTable(ClientContext &context, RenameColumnInfo &info) {
-	auto &transaction = PostgresTransaction::Get(context, catalog);
-	auto entry = GetEntry(context, info.name);
+void PostgresTableSet::AlterTable(PostgresTransaction &transaction, RenameColumnInfo &info) {
+	auto entry = GetEntry(transaction, info.name);
 	string sql = GetAlterTablePrefix(info.name, entry);
 	sql += " RENAME COLUMN  ";
 	string column_name = GetAlterTableColumnName(info.old_name, entry);
@@ -371,9 +366,8 @@ void PostgresTableSet::AlterTable(ClientContext &context, RenameColumnInfo &info
 	transaction.Query(sql);
 }
 
-void PostgresTableSet::AlterTable(ClientContext &context, AddColumnInfo &info) {
-	auto &transaction = PostgresTransaction::Get(context, catalog);
-	string sql = GetAlterTablePrefix(context, info.name);
+void PostgresTableSet::AlterTable(PostgresTransaction &transaction, AddColumnInfo &info) {
+	string sql = GetAlterTablePrefix(transaction, info.name);
 	sql += " ADD COLUMN  ";
 	if (info.if_column_not_exists) {
 		sql += "IF NOT EXISTS ";
@@ -384,9 +378,8 @@ void PostgresTableSet::AlterTable(ClientContext &context, AddColumnInfo &info) {
 	transaction.Query(sql);
 }
 
-void PostgresTableSet::AlterTable(ClientContext &context, RemoveColumnInfo &info) {
-	auto &transaction = PostgresTransaction::Get(context, catalog);
-	auto entry = GetEntry(context, info.name);
+void PostgresTableSet::AlterTable(PostgresTransaction &transaction, RemoveColumnInfo &info) {
+	auto entry = GetEntry(transaction, info.name);
 	string sql = GetAlterTablePrefix(info.name, entry);
 	sql += " DROP COLUMN  ";
 	if (info.if_column_exists) {
@@ -397,19 +390,19 @@ void PostgresTableSet::AlterTable(ClientContext &context, RemoveColumnInfo &info
 	transaction.Query(sql);
 }
 
-void PostgresTableSet::AlterTable(ClientContext &context, AlterTableInfo &alter) {
+void PostgresTableSet::AlterTable(PostgresTransaction &transaction, AlterTableInfo &alter) {
 	switch (alter.alter_table_type) {
 	case AlterTableType::RENAME_TABLE:
-		AlterTable(context, alter.Cast<RenameTableInfo>());
+		AlterTable(transaction, alter.Cast<RenameTableInfo>());
 		break;
 	case AlterTableType::RENAME_COLUMN:
-		AlterTable(context, alter.Cast<RenameColumnInfo>());
+		AlterTable(transaction, alter.Cast<RenameColumnInfo>());
 		break;
 	case AlterTableType::ADD_COLUMN:
-		AlterTable(context, alter.Cast<AddColumnInfo>());
+		AlterTable(transaction, alter.Cast<AddColumnInfo>());
 		break;
 	case AlterTableType::REMOVE_COLUMN:
-		AlterTable(context, alter.Cast<RemoveColumnInfo>());
+		AlterTable(transaction, alter.Cast<RemoveColumnInfo>());
 		break;
 	default:
 		throw BinderException("Unsupported ALTER TABLE type - Postgres tables only "

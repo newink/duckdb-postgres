@@ -53,4 +53,85 @@ pg_GSS_error(const char *errmsg, PGconn *conn, OM_uint32 maj_stat, OM_uint32 min
     conn->status = CONNECTION_BAD;
 }
 
+/*
+ * pg_GSS_load_servicename
+ *
+ * Load the GSSAPI service name for authentication.
+ * This function was introduced in PostgreSQL versions newer than 15.2.
+ * This is a compatibility implementation for PostgreSQL 15.2.
+ *
+ * For PostgreSQL 15.2, we provide a simple implementation that
+ * sets up the service name using the connection parameters.
+ */
+int
+pg_GSS_load_servicename(PGconn *conn)
+{
+    char       *host = conn->pghost;
+    char       *service = conn->krbsrvname;
+    OM_uint32   maj_stat, min_stat;
+    gss_buffer_desc temp_gbuf;
+    char       *principal_name;
+    
+    /*
+     * For PostgreSQL 15.2 compatibility, we provide basic service name loading.
+     * This follows the same pattern as the original PostgreSQL implementation.
+     */
+    
+    /* Use default service name if not specified */
+    if (!service || service[0] == '\0')
+        service = "postgres";
+        
+    /* Use localhost if no host specified */
+    if (!host || host[0] == '\0')
+        host = "localhost";
+    
+    /* Construct the principal name */
+    principal_name = malloc(strlen(service) + strlen(host) + 2);
+    if (!principal_name)
+    {
+        printfPQExpBuffer(&conn->errorMessage, "out of memory for GSS service name\n");
+        return STATUS_ERROR;
+    }
+    
+    sprintf(principal_name, "%s@%s", service, host);
+    
+    /* Convert to GSS name */
+    temp_gbuf.value = principal_name;
+    temp_gbuf.length = strlen(principal_name);
+    
+    maj_stat = gss_import_name(&min_stat, &temp_gbuf,
+                               GSS_C_NT_HOSTBASED_SERVICE, &conn->gtarg_nam);
+    
+    free(principal_name);
+    
+    if (maj_stat != GSS_S_COMPLETE)
+    {
+        pg_GSS_error("GSSAPI service name import error", conn, maj_stat, min_stat);
+        return STATUS_ERROR;
+    }
+    
+    return STATUS_OK;
+}
+
+/*
+ * pg_store_delegated_credential
+ *
+ * Store delegated GSSAPI credentials for later use.
+ * This function was introduced in PostgreSQL versions newer than 15.2.
+ * This is a compatibility implementation for PostgreSQL 15.2.
+ *
+ * For PostgreSQL 15.2, we provide a simple no-op implementation since
+ * credential delegation storage is an advanced feature.
+ */
+void
+pg_store_delegated_credential(gss_cred_id_t cred)
+{
+    /*
+     * For PostgreSQL 15.2 compatibility, we provide a no-op implementation.
+     * Credential delegation storage is an advanced feature that we can
+     * safely skip for basic GSSAPI authentication functionality.
+     */
+    return;
+}
+
 #endif /* HAVE_GSSAPI */

@@ -8,16 +8,19 @@ set(OPENSSL_USE_STATIC_LIBS TRUE)
 
 find_package(OpenSSL REQUIRED)
 
-find_library(GSSAPI_LIBRARIES NAMES gssapi_krb5 gssapi)
-find_path(GSSAPI_INCLUDE_DIRS gssapi/gssapi.h)
+find_package(krb5 CONFIG)
 
-if(GSSAPI_LIBRARIES AND GSSAPI_INCLUDE_DIRS)
-  message(STATUS "Found GSSAPI: ${GSSAPI_LIBRARIES}")
+if(krb5_FOUND)
+  message(STATUS "Found krb5 via VCPKG")
   add_definitions(-DHAVE_GSSAPI=1)
+  set(GSSAPI_LIBRARIES krb5::gssapi_krb5 krb5::krb5)
+  set(GSSAPI_INCLUDE_DIRS "")  # Handled by target properties
+  set(GSSAPI_CONFIGURE_FLAG "--with-gssapi")
 else()
-  message(WARNING "GSSAPI not found - Kerberos authentication will not be available")
+  message(WARNING "krb5 not found - Kerberos authentication will not be available")
   set(GSSAPI_LIBRARIES "")
   set(GSSAPI_INCLUDE_DIRS "")
+  set(GSSAPI_CONFIGURE_FLAG "--without-gssapi")
 endif()
 
 if(NOT MSVC)
@@ -187,7 +190,7 @@ if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/postgres)
     execute_process(
       COMMAND
         ./configure --without-llvm --without-icu --without-tcl --without-perl
-        --without-python --with-gssapi --without-pam --without-bsd-auth
+        --without-python ${GSSAPI_CONFIGURE_FLAG} --without-pam --without-bsd-auth
         --without-ldap --without-bonjour --without-selinux --without-systemd
         --without-readline --without-libxml --without-libxslt --without-zlib
         --without-lz4 --without-openssl

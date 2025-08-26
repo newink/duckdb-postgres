@@ -4,16 +4,19 @@
 if [ "$LINUX_CI_IN_DOCKER" = "1" ]; then
     echo "Installing krb5 packages in Docker environment..."
     
-    # Install both development and runtime packages
-    apk add --no-cache krb5-dev krb5-libs krb5 2>/dev/null
+    # Install development, runtime, and static packages
+    apk add --no-cache krb5-dev krb5-libs krb5 krb5-static 2>/dev/null
     
     # Verify installation
-    if [ -f "/usr/lib/libgssapi_krb5.so.2" ] || [ -f "/usr/lib/libgssapi_krb5.so" ]; then
+    echo "Checking for dynamic libraries..."
+    ls -la /usr/lib/libgssapi* 2>/dev/null || echo "No libgssapi dynamic libraries found"
+    echo "Checking for static libraries..."
+    ls -la /usr/lib/libgssapi*.a /usr/lib/libkrb5*.a 2>/dev/null || echo "No static libraries found"
+    
+    if [ -f "/usr/lib/libgssapi_krb5.so.2" ] || [ -f "/usr/lib/libgssapi_krb5.a" ]; then
         echo "krb5 packages installed successfully"
-        ls -la /usr/lib/libgssapi* 2>/dev/null || true
-        ls -la /usr/lib/*krb5* 2>/dev/null || true
     else
-        echo "Warning: krb5 runtime libraries may not be available"
+        echo "Warning: krb5 libraries may not be available"
     fi
 else
     echo "Not in Docker environment, skipping krb5 installation"

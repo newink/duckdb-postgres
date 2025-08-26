@@ -8,26 +8,18 @@ set(OPENSSL_USE_STATIC_LIBS TRUE)
 
 find_package(OpenSSL REQUIRED)
 
-# Try to install krb5-dev in Docker environment if not found
+# Try to install krb5 packages in Docker environment
 if(DEFINED ENV{LINUX_CI_IN_DOCKER})
-  message(STATUS "Running in Docker container, checking for krb5 packages...")
-  # First check if packages are already available
-  find_library(TEST_KRB5 NAMES krb5)
-  if(NOT TEST_KRB5)
-    message(STATUS "krb5 not found, attempting to install krb5 packages...")
-    execute_process(
-      COMMAND apk add --no-cache krb5-dev krb5-libs krb5
-      RESULT_VARIABLE INSTALL_RESULT
-      OUTPUT_QUIET
-      ERROR_QUIET
-    )
-    if(INSTALL_RESULT EQUAL 0)
-      message(STATUS "Successfully installed krb5 packages")
-    else()
-      message(STATUS "Failed to install krb5 packages (exit code: ${INSTALL_RESULT})")
-    endif()
-  else()
-    message(STATUS "krb5 packages already available")
+  message(STATUS "Running install_krb5.sh script...")
+  execute_process(
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/install_krb5.sh
+    RESULT_VARIABLE INSTALL_RESULT
+    OUTPUT_VARIABLE INSTALL_OUTPUT
+    ERROR_VARIABLE INSTALL_ERROR
+  )
+  message(STATUS "install_krb5.sh output: ${INSTALL_OUTPUT}")
+  if(INSTALL_ERROR)
+    message(STATUS "install_krb5.sh errors: ${INSTALL_ERROR}")
   endif()
 endif()
 

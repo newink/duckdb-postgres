@@ -40,11 +40,11 @@ if(KRB5_GSSAPI_FOUND AND KRB5_FOUND)
   set(GSSAPI_INCLUDE_DIRS ${KRB5_GSSAPI_INCLUDE_DIRS})
   
   # Try to find static libraries first for better distribution compatibility
-  find_library(GSSAPI_STATIC_LIB NAMES libgssapi_krb5.a PATHS /usr/lib /usr/local/lib /usr/lib64)
-  find_library(KRB5_STATIC_LIB NAMES libkrb5.a PATHS /usr/lib /usr/local/lib /usr/lib64)
-  find_library(K5CRYPTO_STATIC_LIB NAMES libk5crypto.a PATHS /usr/lib /usr/local/lib /usr/lib64)
-  find_library(COM_ERR_STATIC_LIB NAMES libcom_err.a PATHS /usr/lib /usr/local/lib /usr/lib64)
-  find_library(KRB5SUPPORT_STATIC_LIB NAMES libkrb5support.a PATHS /usr/lib /usr/local/lib /usr/lib64)
+  find_library(GSSAPI_STATIC_LIB NAMES libgssapi_krb5.a PATHS /usr/lib64 /usr/lib /usr/local/lib)
+  find_library(KRB5_STATIC_LIB NAMES libkrb5.a PATHS /usr/lib64 /usr/lib /usr/local/lib)
+  find_library(K5CRYPTO_STATIC_LIB NAMES libk5crypto.a PATHS /usr/lib64 /usr/lib /usr/local/lib)
+  find_library(COM_ERR_STATIC_LIB NAMES libcom_err.a PATHS /usr/lib64 /usr/lib /usr/local/lib)
+  find_library(KRB5SUPPORT_STATIC_LIB NAMES libkrb5support.a PATHS /usr/lib64 /usr/lib /usr/local/lib)
   
   if(GSSAPI_STATIC_LIB AND KRB5_STATIC_LIB)
     message(STATUS "Using static GSSAPI libraries for better distribution")
@@ -76,11 +76,11 @@ else()
   )
   find_library(GSSAPI_LIBRARIES 
     NAMES gssapi_krb5 gssapi libgssapi_krb5 libgssapi
-    PATHS /usr/lib /usr/local/lib /usr/lib64
+    PATHS /usr/lib64 /usr/lib /usr/local/lib
   )
   find_library(KRB5_LIBRARIES 
     NAMES krb5 libkrb5
-    PATHS /usr/lib /usr/local/lib /usr/lib64
+    PATHS /usr/lib64 /usr/lib /usr/local/lib
   )
 
   if(GSSAPI_LIBRARIES AND KRB5_LIBRARIES)

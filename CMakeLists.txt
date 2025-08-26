@@ -8,19 +8,55 @@ set(OPENSSL_USE_STATIC_LIBS TRUE)
 
 find_package(OpenSSL REQUIRED)
 
-find_package(krb5 CONFIG)
+# Try to find GSSAPI/Kerberos libraries using pkg-config first
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+  pkg_check_modules(KRB5_GSSAPI QUIET krb5-gssapi)
+  pkg_check_modules(KRB5 QUIET krb5)
+  pkg_check_modules(MIT_KRB5_GSSAPI QUIET mit-krb5-gssapi)
+  pkg_check_modules(MIT_KRB5 QUIET mit-krb5)
+endif()
 
-if(krb5_FOUND)
-  message(STATUS "Found krb5 via VCPKG")
+# Use pkg-config results if available
+if(KRB5_GSSAPI_FOUND AND KRB5_FOUND)
+  message(STATUS "Found GSSAPI via pkg-config: ${KRB5_GSSAPI_LIBRARIES}")
   add_definitions(-DHAVE_GSSAPI=1)
-  set(GSSAPI_LIBRARIES krb5::gssapi_krb5 krb5::krb5)
-  set(GSSAPI_INCLUDE_DIRS "")  # Handled by target properties
   set(GSSAPI_CONFIGURE_FLAG "--with-gssapi")
+  set(GSSAPI_LIBRARIES ${KRB5_GSSAPI_LIBRARIES} ${KRB5_LIBRARIES})
+  set(GSSAPI_INCLUDE_DIRS ${KRB5_GSSAPI_INCLUDE_DIRS})
+elseif(MIT_KRB5_GSSAPI_FOUND AND MIT_KRB5_FOUND)
+  message(STATUS "Found MIT GSSAPI via pkg-config: ${MIT_KRB5_GSSAPI_LIBRARIES}")
+  add_definitions(-DHAVE_GSSAPI=1)
+  set(GSSAPI_CONFIGURE_FLAG "--with-gssapi")
+  set(GSSAPI_LIBRARIES ${MIT_KRB5_GSSAPI_LIBRARIES} ${MIT_KRB5_LIBRARIES})
+  set(GSSAPI_INCLUDE_DIRS ${MIT_KRB5_GSSAPI_INCLUDE_DIRS})
 else()
-  message(WARNING "krb5 not found - Kerberos authentication will not be available")
-  set(GSSAPI_LIBRARIES "")
-  set(GSSAPI_INCLUDE_DIRS "")
-  set(GSSAPI_CONFIGURE_FLAG "--without-gssapi")
+  # Fallback to manual library detection
+  find_path(GSSAPI_INCLUDE_DIR 
+    NAMES gssapi/gssapi.h gssapi.h
+    PATHS /usr/include /usr/local/include /usr/include/gssapi
+  )
+  find_library(GSSAPI_LIBRARIES 
+    NAMES gssapi_krb5 gssapi libgssapi_krb5 libgssapi
+    PATHS /usr/lib /usr/local/lib /usr/lib64
+  )
+  find_library(KRB5_LIBRARIES 
+    NAMES krb5 libkrb5
+    PATHS /usr/lib /usr/local/lib /usr/lib64
+  )
+
+  if(GSSAPI_LIBRARIES AND KRB5_LIBRARIES)
+    message(STATUS "Found GSSAPI manually: ${GSSAPI_LIBRARIES}")
+    add_definitions(-DHAVE_GSSAPI=1)
+    set(GSSAPI_CONFIGURE_FLAG "--with-gssapi")
+    set(GSSAPI_INCLUDE_DIRS ${GSSAPI_INCLUDE_DIR})
+    set(GSSAPI_LIBRARIES ${GSSAPI_LIBRARIES} ${KRB5_LIBRARIES})
+  else()
+    message(STATUS "GSSAPI/Kerberos not found - building without Kerberos authentication support")
+    set(GSSAPI_LIBRARIES "")
+    set(GSSAPI_INCLUDE_DIRS "")
+    set(GSSAPI_CONFIGURE_FLAG "--without-gssapi")
+  endif()
 endif()
 
 if(NOT MSVC)

@@ -1,6 +1,5 @@
 {
   "dependencies": [
-    "openssl",
-    "krb5"
+    "openssl"
   ]
 }

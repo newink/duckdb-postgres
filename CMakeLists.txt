@@ -8,6 +8,29 @@ set(OPENSSL_USE_STATIC_LIBS TRUE)
 
 find_package(OpenSSL REQUIRED)
 
+# Try to install krb5-dev in Docker environment if not found
+if(DEFINED ENV{LINUX_CI_IN_DOCKER})
+  message(STATUS "Running in Docker container, checking for krb5 packages...")
+  # First check if packages are already available
+  find_library(TEST_KRB5 NAMES krb5)
+  if(NOT TEST_KRB5)
+    message(STATUS "krb5 not found, attempting to install krb5-dev...")
+    execute_process(
+      COMMAND apk add --no-cache krb5-dev
+      RESULT_VARIABLE INSTALL_RESULT
+      OUTPUT_QUIET
+      ERROR_QUIET
+    )
+    if(INSTALL_RESULT EQUAL 0)
+      message(STATUS "Successfully installed krb5-dev")
+    else()
+      message(STATUS "Failed to install krb5-dev (exit code: ${INSTALL_RESULT})")
+    endif()
+  else()
+    message(STATUS "krb5 packages already available")
+  endif()
+endif()
+
 # Try to find GSSAPI/Kerberos libraries using pkg-config first
 find_package(PkgConfig QUIET)
 if(PkgConfig_FOUND)

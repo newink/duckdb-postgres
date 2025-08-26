@@ -178,7 +178,7 @@ endif()
 
 # Add GSSAPI source files when GSSAPI support is enabled
 if(GSSAPI_LIBRARIES OR KRB5_GSSAPI_FOUND OR MIT_KRB5_GSSAPI_FOUND)
-  set(LIBPG_SOURCES ${LIBPG_SOURCES} postgres/src/interfaces/libpq/fe-secure-gssapi.c)
+  set(LIBPG_SOURCES ${LIBPG_SOURCES} postgres/src/interfaces/libpq/fe-secure-gssapi.c pg_gss_compat.c)
   message(STATUS "Adding GSSAPI source files to build")
 endif()
 

@@ -26,4 +26,31 @@ pg_GSS_have_cred_cache(gss_cred_id_t *cred)
     return false;
 }
 
+/*
+ * pg_GSS_error
+ *
+ * Report GSSAPI error to the client.
+ * This function was introduced in PostgreSQL versions newer than 15.2.
+ * This is a compatibility implementation for PostgreSQL 15.2.
+ *
+ * For PostgreSQL 15.2, we provide a simple implementation that
+ * logs the error message and sets the connection error state.
+ */
+void
+pg_GSS_error(const char *errmsg, PGconn *conn, OM_uint32 maj_stat, OM_uint32 min_stat)
+{
+    char        msg_buffer[256];
+    
+    /*
+     * For PostgreSQL 15.2 compatibility, we provide basic error reporting.
+     * We format a simple error message with the major and minor status codes.
+     */
+    snprintf(msg_buffer, sizeof(msg_buffer), 
+             "%s (major: %u, minor: %u)", 
+             errmsg, (unsigned int)maj_stat, (unsigned int)min_stat);
+    
+    printfPQExpBuffer(&conn->errorMessage, "%s\n", msg_buffer);
+    conn->status = CONNECTION_BAD;
+}
+
 #endif /* HAVE_GSSAPI */

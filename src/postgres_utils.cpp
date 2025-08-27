@@ -15,6 +15,21 @@ static void PGNoticeProcessor(void *arg, const char *message) {
 PGconn *PostgresUtils::PGConnect(const string &dsn) {
 	// Debug: Log the connection string being used
 	fprintf(stderr, "[DEBUG] PGConnect: Attempting connection with DSN: %s\n", dsn.c_str());
+	fprintf(stderr, "[DEBUG] PGConnect: DSN length: %zu bytes\n", dsn.length());
+	
+	// Debug: Test connection string parsing before actual connection
+	PQconninfoOption *connOptions = PQconninfoParse(dsn.c_str(), NULL);
+	if (connOptions) {
+		fprintf(stderr, "[DEBUG] PGConnect: Connection string parsing succeeded\n");
+		for (PQconninfoOption *option = connOptions; option->keyword != NULL; option++) {
+			if (option->val != NULL) {
+				fprintf(stderr, "[DEBUG] PGConnect: Parsed param '%s' = '%s'\n", option->keyword, option->val);
+			}
+		}
+		PQconninfoFree(connOptions);
+	} else {
+		fprintf(stderr, "[DEBUG] PGConnect: ERROR: Connection string parsing FAILED!\n");
+	}
 	
 	// Debug: Check for Kerberos credential cache
 	const char* krb5ccname = getenv("KRB5CCNAME");

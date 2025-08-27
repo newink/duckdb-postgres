@@ -12,6 +12,13 @@ PGconn *PostgresUtils::PGConnect(const string &dsn) {
 	// Debug: Log the connection string being used
 	fprintf(stderr, "[DEBUG] PGConnect: Attempting connection with DSN: %s\n", dsn.c_str());
 	
+	// Debug: Check for Kerberos credential cache
+	const char* krb5ccname = getenv("KRB5CCNAME");
+	fprintf(stderr, "[DEBUG] PGConnect: KRB5CCNAME environment: %s\n", krb5ccname ? krb5ccname : "(not set)");
+	
+	// Check if we can access default credential cache
+	system("klist -s 2>/dev/null && echo '[DEBUG] Kerberos: Valid tickets found' || echo '[DEBUG] Kerberos: No valid tickets or cache access failed'");
+	
 	PGconn *conn = PQconnectdb(dsn.c_str());
 
 	// Debug: Log connection status and details
@@ -34,6 +41,22 @@ PGconn *PostgresUtils::PGConnect(const string &dsn) {
 	if (PQstatus(conn) == CONNECTION_BAD) {
 		// Debug: Log detailed error information
 		fprintf(stderr, "[DEBUG] PGConnect: Connection failed with detailed error: %s\n", PQerrorMessage(conn));
+		
+		// Debug: Analyze error type
+		string error_msg = string(PQerrorMessage(conn));
+		if (error_msg.find("no PostgreSQL user name specified") != string::npos) {
+			fprintf(stderr, "[DEBUG] PGConnect: ERROR ANALYSIS: Missing username in startup packet\n");
+			fprintf(stderr, "[DEBUG] PGConnect: LIKELY CAUSE: GSSAPI not being used, falling back to regular auth\n");
+			fprintf(stderr, "[DEBUG] PGConnect: SOLUTION: Ensure gssencmode=require and valid Kerberos ticket\n");
+		} else if (error_msg.find("encryption required") != string::npos) {
+			fprintf(stderr, "[DEBUG] PGConnect: ERROR ANALYSIS: GSSAPI encryption required but failed\n");
+			fprintf(stderr, "[DEBUG] PGConnect: LIKELY CAUSE: No Kerberos credentials or server doesn't support GSSAPI\n");
+			fprintf(stderr, "[DEBUG] PGConnect: SOLUTION: Run 'kinit user@REALM' to get Kerberos ticket\n");
+		} else if (error_msg.find("GSSAPI") != string::npos || error_msg.find("GSS") != string::npos) {
+			fprintf(stderr, "[DEBUG] PGConnect: ERROR ANALYSIS: GSSAPI authentication error\n");
+			fprintf(stderr, "[DEBUG] PGConnect: Check Kerberos configuration and server setup\n");
+		}
+		
 		throw IOException("Unable to connect to Postgres at %s: %s", dsn, string(PQerrorMessage(conn)));
 	}
 	

@@ -9,12 +9,35 @@ static void PGNoticeProcessor(void *arg, const char *message) {
 }
 
 PGconn *PostgresUtils::PGConnect(const string &dsn) {
+	// Debug: Log the connection string being used
+	fprintf(stderr, "[DEBUG] PGConnect: Attempting connection with DSN: %s\n", dsn.c_str());
+	
 	PGconn *conn = PQconnectdb(dsn.c_str());
+
+	// Debug: Log connection status and details
+	if (conn) {
+		fprintf(stderr, "[DEBUG] PGConnect: Connection status: %d (%s)\n", PQstatus(conn), 
+		        PQstatus(conn) == CONNECTION_OK ? "OK" : "BAD");
+		fprintf(stderr, "[DEBUG] PGConnect: Connection user: '%s'\n", PQuser(conn) ? PQuser(conn) : "(null)");
+		fprintf(stderr, "[DEBUG] PGConnect: Connection host: '%s'\n", PQhost(conn) ? PQhost(conn) : "(null)");
+		fprintf(stderr, "[DEBUG] PGConnect: Connection port: '%s'\n", PQport(conn) ? PQport(conn) : "(null)");
+		fprintf(stderr, "[DEBUG] PGConnect: Connection db: '%s'\n", PQdb(conn) ? PQdb(conn) : "(null)");
+		
+		// Debug: Check GSSAPI-related connection options
+		const char *gsslib = PQparameterStatus(conn, "gsslib");
+		const char *gss_delegated_creds = PQparameterStatus(conn, "gss_delegated_creds");
+		fprintf(stderr, "[DEBUG] PGConnect: GSSAPI lib: '%s'\n", gsslib ? gsslib : "(null)");
+		fprintf(stderr, "[DEBUG] PGConnect: GSS delegated creds: '%s'\n", gss_delegated_creds ? gss_delegated_creds : "(null)");
+	}
 
 	// both PQStatus and PQerrorMessage check for nullptr
 	if (PQstatus(conn) == CONNECTION_BAD) {
+		// Debug: Log detailed error information
+		fprintf(stderr, "[DEBUG] PGConnect: Connection failed with detailed error: %s\n", PQerrorMessage(conn));
 		throw IOException("Unable to connect to Postgres at %s: %s", dsn, string(PQerrorMessage(conn)));
 	}
+	
+	fprintf(stderr, "[DEBUG] PGConnect: Connection successful\n");
 	PQsetNoticeProcessor(conn, PGNoticeProcessor, nullptr);
 	return conn;
 }

@@ -114,6 +114,12 @@ PGconn *PostgresUtils::PGConnect(const string &dsn) {
 	}
 	
 	fprintf(stderr, "[DEBUG] PGConnect: Connection successful\n");
+	
+	// Debug: Check server version for comparison
+	int server_version = PQserverVersion(conn);
+	fprintf(stderr, "[DEBUG] PGConnect: Server PostgreSQL version: %d\n", server_version);
+	fprintf(stderr, "[DEBUG] PGConnect: Client libpq version: %d\n", PQlibVersion());
+	
 	PQsetNoticeProcessor(conn, PGNoticeProcessor, nullptr);
 	return conn;
 }

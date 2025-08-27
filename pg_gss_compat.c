@@ -23,6 +23,7 @@ pg_GSS_have_cred_cache(gss_cred_id_t *cred)
      * This means we'll always attempt normal credential acquisition,
      * which is the safe fallback behavior.
      */
+    fprintf(stderr, "[DEBUG] pg_GSS_have_cred_cache: CALLED!\n");
     return false;
 }
 
@@ -45,6 +46,9 @@ pg_GSS_error(const char *errmsg, PGconn *conn, OM_uint32 maj_stat, OM_uint32 min
      * For PostgreSQL 15.2 compatibility, we provide basic error reporting.
      * We format a simple error message with the major and minor status codes.
      */
+    
+    fprintf(stderr, "[DEBUG] pg_GSS_error: CALLED with message: %s\n", errmsg);
+    
     snprintf(msg_buffer, sizeof(msg_buffer), 
              "%s (major: %u, minor: %u)", 
              errmsg, (unsigned int)maj_stat, (unsigned int)min_stat);
@@ -76,6 +80,8 @@ pg_GSS_load_servicename(PGconn *conn)
      * For PostgreSQL 15.2 compatibility, we provide basic service name loading.
      * This follows the same pattern as the original PostgreSQL implementation.
      */
+    
+    fprintf(stderr, "[DEBUG] pg_GSS_load_servicename: CALLED!\n");
     
     /* Use default service name if not specified */
     if (!service || service[0] == '\0')

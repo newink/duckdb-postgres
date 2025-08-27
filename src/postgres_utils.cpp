@@ -3,6 +3,10 @@
 #include "storage/postgres_transaction.hpp"
 #include "postgres_type_oids.hpp"
 
+#ifdef HAVE_GSSAPI
+#include <gssapi/gssapi.h>
+#endif
+
 namespace duckdb {
 
 static void PGNoticeProcessor(void *arg, const char *message) {
@@ -18,6 +22,40 @@ PGconn *PostgresUtils::PGConnect(const string &dsn) {
 	
 	// Check if we can access default credential cache
 	system("klist -s 2>/dev/null && echo '[DEBUG] Kerberos: Valid tickets found' || echo '[DEBUG] Kerberos: No valid tickets or cache access failed'");
+	
+	// Debug: Check if libpq was compiled with GSSAPI support
+	fprintf(stderr, "[DEBUG] PGConnect: Checking libpq GSSAPI support...\n");
+	
+#ifdef HAVE_GSSAPI
+	fprintf(stderr, "[DEBUG] PGConnect: HAVE_GSSAPI is defined - extension compiled with GSSAPI\n");
+#else
+	fprintf(stderr, "[DEBUG] PGConnect: HAVE_GSSAPI NOT defined - extension compiled WITHOUT GSSAPI\n");
+#endif
+
+	// Debug: Check if GSSAPI symbols are available at runtime
+	fprintf(stderr, "[DEBUG] PGConnect: Testing GSSAPI symbol availability...\n");
+	
+#ifdef HAVE_GSSAPI
+	// Try a simple GSSAPI call to verify library linkage
+	OM_uint32 major_status, minor_status;
+	gss_buffer_desc name_buffer = GSS_C_EMPTY_BUFFER;
+	gss_name_t gss_name = GSS_C_NO_NAME;
+	
+	name_buffer.value = (void*)"test@EXAMPLE.COM";
+	name_buffer.length = strlen((char*)name_buffer.value);
+	
+	major_status = gss_import_name(&minor_status, &name_buffer, GSS_C_NT_USER_NAME, &gss_name);
+	
+	if (major_status == GSS_S_COMPLETE) {
+		fprintf(stderr, "[DEBUG] PGConnect: GSSAPI symbols working - gss_import_name succeeded\n");
+		gss_release_name(&minor_status, &gss_name);
+	} else {
+		fprintf(stderr, "[DEBUG] PGConnect: GSSAPI symbols FAILED - gss_import_name error: major=%u, minor=%u\n", 
+		        major_status, minor_status);
+	}
+#else
+	fprintf(stderr, "[DEBUG] PGConnect: GSSAPI test skipped - not compiled with GSSAPI support\n");
+#endif
 	
 	PGconn *conn = PQconnectdb(dsn.c_str());
 

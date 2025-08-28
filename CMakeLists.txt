@@ -8,6 +8,11 @@ set(OPENSSL_USE_STATIC_LIBS TRUE)
 
 find_package(OpenSSL REQUIRED)
 
+# Use dynamic loading approach - no compile-time libpq dependency
+message(STATUS "Using dynamic libpq loading at runtime")
+set(USE_DYNAMIC_LIBPQ TRUE)
+add_definitions(-DUSE_DYNAMIC_LIBPQ=1)
+
 # Try to install krb5 packages in Docker environment
 if(DEFINED ENV{LINUX_CI_IN_DOCKER})
   message(STATUS "Running install_krb5.sh script...")
@@ -130,6 +135,8 @@ if(WIN32)
                       postgres/src/include/port/win32_msvc)
 endif()
 
+# Only define LIBPG_SOURCES if using dynamic libpq loading
+if(USE_DYNAMIC_LIBPQ)
 set(LIBPG_SOURCES
     postgres/src/common/base64.c
     postgres/src/common/cryptohash.c
@@ -202,6 +209,8 @@ if(WIN32)
 
 endif()
 
+endif() # End of USE_DYNAMIC_LIBPQ
+
 function(PREPEND var prefix)
   set(listVar "")
   foreach(f ${ARGN})
@@ -214,9 +223,11 @@ endfunction(PREPEND)
 
 add_subdirectory(src)
 
-prepend(LIBPG_SOURCES_FULLPATH ${CMAKE_CURRENT_SOURCE_DIR} ${LIBPG_SOURCES})
+if(USE_DYNAMIC_LIBPQ)
+  prepend(LIBPG_SOURCES_FULLPATH ${CMAKE_CURRENT_SOURCE_DIR} ${LIBPG_SOURCES})
+endif()
 
-if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/postgres)
+if(USE_DYNAMIC_LIBPQ AND NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/postgres)
 
   # Download the PostgreSQL source code
   message(STATUS "Downloading PostgreSQL source code")
@@ -286,19 +297,31 @@ if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/postgres)
 endif()
 
 set(PARAMETERS "-no-warnings")
-build_loadable_extension(${TARGET_NAME} ${PARAMETERS} ${ALL_OBJECT_FILES}
-                         ${LIBPG_SOURCES_FULLPATH})
-
-if(GSSAPI_INCLUDE_DIRS)
-  target_include_directories(
-    ${TARGET_NAME}_loadable_extension
-    PRIVATE include postgres/src/include postgres/src/backend
-            postgres/src/interfaces/libpq ${OPENSSL_INCLUDE_DIR} ${GSSAPI_INCLUDE_DIRS})
+if(USE_DYNAMIC_LIBPQ)
+  # Use dynamic loading with PostgreSQL sources (but no libpq linking)
+  build_loadable_extension(${TARGET_NAME} ${PARAMETERS} ${ALL_OBJECT_FILES}
+                           ${LIBPG_SOURCES_FULLPATH} libpq_dynamic.c)
 else()
-  target_include_directories(
-    ${TARGET_NAME}_loadable_extension
-    PRIVATE include postgres/src/include postgres/src/backend
-            postgres/src/interfaces/libpq ${OPENSSL_INCLUDE_DIR})
+  # Fallback to no PostgreSQL sources
+  build_loadable_extension(${TARGET_NAME} ${PARAMETERS} ${ALL_OBJECT_FILES})
+endif()
+
+if(USE_DYNAMIC_LIBPQ)
+  # Dynamic loading configuration - include PostgreSQL headers but don't link libpq
+  if(GSSAPI_INCLUDE_DIRS)
+    target_include_directories(
+      ${TARGET_NAME}_loadable_extension
+      PRIVATE include postgres/src/include postgres/src/backend
+              postgres/src/interfaces/libpq ${OPENSSL_INCLUDE_DIR} ${GSSAPI_INCLUDE_DIRS})
+  else()
+    target_include_directories(
+      ${TARGET_NAME}_loadable_extension
+      PRIVATE include postgres/src/include postgres/src/backend
+              postgres/src/interfaces/libpq ${OPENSSL_INCLUDE_DIR})
+  endif()
+else()
+  # No PostgreSQL sources - minimal configuration
+  target_include_directories(${TARGET_NAME}_loadable_extension PRIVATE include)
 endif()
 
 if(WIN32)
@@ -308,9 +331,15 @@ if(WIN32)
             postgres/src/include/port/win32_msvc)
 endif()
 
-if(GSSAPI_LIBRARIES)
-  target_link_libraries(${TARGET_NAME}_loadable_extension ${OPENSSL_LIBRARIES} ${GSSAPI_LIBRARIES})
+if(USE_DYNAMIC_LIBPQ)
+  # Dynamic loading - need to link GSSAPI libraries for static PostgreSQL sources, plus dl for dynamic loading
+  if(GSSAPI_LIBRARIES)
+    target_link_libraries(${TARGET_NAME}_loadable_extension ${OPENSSL_LIBRARIES} ${GSSAPI_LIBRARIES} ${CMAKE_DL_LIBS})
+  else()
+    target_link_libraries(${TARGET_NAME}_loadable_extension ${OPENSSL_LIBRARIES} ${CMAKE_DL_LIBS})
+  endif()
 else()
+  # No PostgreSQL sources - minimal linking
   target_link_libraries(${TARGET_NAME}_loadable_extension ${OPENSSL_LIBRARIES})
 endif()
 set_property(TARGET ${TARGET_NAME}_loadable_extension PROPERTY C_STANDARD 99)

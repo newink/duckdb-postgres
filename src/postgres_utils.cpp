@@ -3,6 +3,12 @@
 #include "storage/postgres_transaction.hpp"
 #include "postgres_type_oids.hpp"
 
+#ifdef USE_DYNAMIC_LIBPQ
+#include "../libpq_dynamic.h"
+#else
+#include "libpq-fe.h"
+#endif
+
 #ifdef HAVE_GSSAPI
 #include <gssapi/gssapi.h>
 #endif
@@ -13,6 +19,18 @@ static void PGNoticeProcessor(void *arg, const char *message) {
 }
 
 PGconn *PostgresUtils::PGConnect(const string &dsn) {
+#ifdef USE_DYNAMIC_LIBPQ
+	// Initialize dynamic libpq loading
+	static bool libpq_initialized = false;
+	if (!libpq_initialized) {
+		fprintf(stderr, "[DEBUG] PGConnect: Initializing dynamic libpq loading...\n");
+		if (!libpq_dynamic_init()) {
+			throw ConnectionException("Failed to load dynamic libpq library");
+		}
+		libpq_initialized = true;
+	}
+#endif
+	
 	// Debug: Log the connection string being used
 	fprintf(stderr, "[DEBUG] PGConnect: Attempting connection with DSN: %s\n", dsn.c_str());
 	fprintf(stderr, "[DEBUG] PGConnect: DSN length: %zu bytes\n", dsn.length());

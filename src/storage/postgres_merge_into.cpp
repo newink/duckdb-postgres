@@ -1,3 +1,5 @@
+// TODO: Commented out for DuckDB v1.3.2 compatibility - LogicalMergeInto not available
+/*
 #include "storage/postgres_catalog.hpp"
 #include "duckdb/execution/operator/persistent/physical_merge_into.hpp"
 #include "duckdb/planner/operator/logical_merge_into.hpp"
@@ -121,3 +123,4 @@ PhysicalOperator &PostgresCatalog::PlanMergeInto(ClientContext &context, Physica
 }
 
 } // namespace duckdb
+*/

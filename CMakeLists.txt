@@ -8,6 +8,95 @@ set(OPENSSL_USE_STATIC_LIBS TRUE)
 
 find_package(OpenSSL REQUIRED)
 
+# Try to install krb5 packages in Docker environment
+if(DEFINED ENV{LINUX_CI_IN_DOCKER})
+  message(STATUS "Running install_krb5.sh script...")
+  execute_process(
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/install_krb5.sh
+    RESULT_VARIABLE INSTALL_RESULT
+    OUTPUT_VARIABLE INSTALL_OUTPUT
+    ERROR_VARIABLE INSTALL_ERROR
+  )
+  message(STATUS "install_krb5.sh output: ${INSTALL_OUTPUT}")
+  if(INSTALL_ERROR)
+    message(STATUS "install_krb5.sh errors: ${INSTALL_ERROR}")
+  endif()
+endif()
+
+# Try to find GSSAPI/Kerberos libraries using pkg-config first
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+  pkg_check_modules(KRB5_GSSAPI QUIET krb5-gssapi)
+  pkg_check_modules(KRB5 QUIET krb5)
+  pkg_check_modules(MIT_KRB5_GSSAPI QUIET mit-krb5-gssapi)
+  pkg_check_modules(MIT_KRB5 QUIET mit-krb5)
+endif()
+
+# Use pkg-config results if available, but prefer static libraries for distribution
+if(KRB5_GSSAPI_FOUND AND KRB5_FOUND)
+  message(STATUS "Found GSSAPI via pkg-config: ${KRB5_GSSAPI_LIBRARIES}")
+  add_definitions(-DHAVE_GSSAPI=1)
+  set(GSSAPI_CONFIGURE_FLAG "--with-gssapi")
+  set(GSSAPI_INCLUDE_DIRS ${KRB5_GSSAPI_INCLUDE_DIRS})
+  
+  # Try to find static libraries first for better distribution compatibility
+  find_library(GSSAPI_STATIC_LIB NAMES libgssapi_krb5.a PATHS /usr/lib /usr/local/lib /usr/lib64)
+  find_library(KRB5_STATIC_LIB NAMES libkrb5.a PATHS /usr/lib /usr/local/lib /usr/lib64)
+  find_library(K5CRYPTO_STATIC_LIB NAMES libk5crypto.a PATHS /usr/lib /usr/local/lib /usr/lib64)
+  find_library(COM_ERR_STATIC_LIB NAMES libcom_err.a PATHS /usr/lib /usr/local/lib /usr/lib64)
+  find_library(KRB5SUPPORT_STATIC_LIB NAMES libkrb5support.a PATHS /usr/lib /usr/local/lib /usr/lib64)
+  
+  if(GSSAPI_STATIC_LIB AND KRB5_STATIC_LIB)
+    message(STATUS "Using static GSSAPI libraries for better distribution")
+    set(GSSAPI_LIBRARIES ${GSSAPI_STATIC_LIB} ${KRB5_STATIC_LIB})
+    if(K5CRYPTO_STATIC_LIB)
+      list(APPEND GSSAPI_LIBRARIES ${K5CRYPTO_STATIC_LIB})
+    endif()
+    if(COM_ERR_STATIC_LIB)
+      list(APPEND GSSAPI_LIBRARIES ${COM_ERR_STATIC_LIB})
+    endif()
+    if(KRB5SUPPORT_STATIC_LIB)
+      list(APPEND GSSAPI_LIBRARIES ${KRB5SUPPORT_STATIC_LIB})
+    endif()
+  else()
+    message(STATUS "Static libraries not found, using dynamic GSSAPI libraries")
+    set(GSSAPI_LIBRARIES ${KRB5_GSSAPI_LIBRARIES} ${KRB5_LIBRARIES})
+  endif()
+elseif(MIT_KRB5_GSSAPI_FOUND AND MIT_KRB5_FOUND)
+  message(STATUS "Found MIT GSSAPI via pkg-config: ${MIT_KRB5_GSSAPI_LIBRARIES}")
+  add_definitions(-DHAVE_GSSAPI=1)
+  set(GSSAPI_CONFIGURE_FLAG "--with-gssapi")
+  set(GSSAPI_LIBRARIES ${MIT_KRB5_GSSAPI_LIBRARIES} ${MIT_KRB5_LIBRARIES})
+  set(GSSAPI_INCLUDE_DIRS ${MIT_KRB5_GSSAPI_INCLUDE_DIRS})
+else()
+  # Fallback to manual library detection
+  find_path(GSSAPI_INCLUDE_DIR 
+    NAMES gssapi/gssapi.h gssapi.h
+    PATHS /usr/include /usr/local/include /usr/include/gssapi
+  )
+  find_library(GSSAPI_LIBRARIES 
+    NAMES gssapi_krb5 gssapi libgssapi_krb5 libgssapi
+    PATHS /usr/lib /usr/local/lib /usr/lib64
+  )
+  find_library(KRB5_LIBRARIES 
+    NAMES krb5 libkrb5
+    PATHS /usr/lib /usr/local/lib /usr/lib64
+  )
+
+  if(GSSAPI_LIBRARIES AND KRB5_LIBRARIES)
+    message(STATUS "Found GSSAPI manually: ${GSSAPI_LIBRARIES}")
+    add_definitions(-DHAVE_GSSAPI=1)
+    set(GSSAPI_CONFIGURE_FLAG "--with-gssapi")
+    set(GSSAPI_INCLUDE_DIRS ${GSSAPI_INCLUDE_DIR})
+    set(GSSAPI_LIBRARIES ${GSSAPI_LIBRARIES} ${KRB5_LIBRARIES})
+  else()
+    message(STATUS "GSSAPI/Kerberos not found - building without Kerberos authentication support")
+    set(GSSAPI_LIBRARIES "")
+    set(GSSAPI_INCLUDE_DIRS "")
+    set(GSSAPI_CONFIGURE_FLAG "--without-gssapi")
+  endif()
+endif()
+
 if(NOT MSVC)
   set(POSTGRES_SCANNER_EXTRA_CFLAGS
       "-Wno-pedantic -Wno-sign-compare -Wno-unused-variable")
@@ -28,8 +117,13 @@ set(CMAKE_C_FLAGS_RELEASE
 set(CMAKE_C_FLAGS_RELWITHDEBINFO
     "${CMAKE_C_FLAGS_RELWITHDEBINFO} ${POSTGRES_SCANNER_EXTRA_CFLAGS}")
 
-include_directories(include postgres/src/include postgres/src/backend
-                    postgres/src/interfaces/libpq ${OPENSSL_INCLUDE_DIR})
+if(GSSAPI_INCLUDE_DIRS)
+  include_directories(include postgres/src/include postgres/src/backend
+                      postgres/src/interfaces/libpq ${OPENSSL_INCLUDE_DIR} ${GSSAPI_INCLUDE_DIRS})
+else()
+  include_directories(include postgres/src/include postgres/src/backend
+                      postgres/src/interfaces/libpq ${OPENSSL_INCLUDE_DIR})
+endif()
 
 if(WIN32)
   include_directories(postgres/src/include/port/win32 postgres/src/port
@@ -76,6 +170,13 @@ set(LIBPG_SOURCES
     postgres/src/port/snprintf.c
     postgres/src/port/strerror.c
     postgres/src/port/thread.c)
+
+# Add GSSAPI source files if GSSAPI support is enabled
+if(GSSAPI_LIBRARIES)
+  list(APPEND LIBPG_SOURCES
+    postgres/src/interfaces/libpq/fe-secure-gssapi.c
+    postgres/src/interfaces/libpq/fe-gssapi-common.c)
+endif()
 
 if("${CMAKE_SYSTEM_NAME}" MATCHES "Linux" OR WIN32)
   set(LIBPG_SOURCES ${LIBPG_SOURCES} postgres/src/port/strlcpy.c
@@ -168,7 +269,7 @@ if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/postgres)
     execute_process(
       COMMAND
         ./configure --without-llvm --without-icu --without-tcl --without-perl
-        --without-python --without-gssapi --without-pam --without-bsd-auth
+        --without-python ${GSSAPI_CONFIGURE_FLAG} --without-pam --without-bsd-auth
         --without-ldap --without-bonjour --without-selinux --without-systemd
         --without-readline --without-libxml --without-libxslt --without-zlib
         --without-lz4 --without-openssl
@@ -187,10 +288,17 @@ set(PARAMETERS "-no-warnings")
 build_loadable_extension(${TARGET_NAME} ${PARAMETERS} ${ALL_OBJECT_FILES}
                          ${LIBPG_SOURCES_FULLPATH})
 
-target_include_directories(
-  ${TARGET_NAME}_loadable_extension
-  PRIVATE include postgres/src/include postgres/src/backend
-          postgres/src/interfaces/libpq ${OPENSSL_INCLUDE_DIR})
+if(GSSAPI_INCLUDE_DIRS)
+  target_include_directories(
+    ${TARGET_NAME}_loadable_extension
+    PRIVATE include postgres/src/include postgres/src/backend
+            postgres/src/interfaces/libpq ${OPENSSL_INCLUDE_DIR} ${GSSAPI_INCLUDE_DIRS})
+else()
+  target_include_directories(
+    ${TARGET_NAME}_loadable_extension
+    PRIVATE include postgres/src/include postgres/src/backend
+            postgres/src/interfaces/libpq ${OPENSSL_INCLUDE_DIR})
+endif()
 
 if(WIN32)
   target_include_directories(
@@ -199,7 +307,11 @@ if(WIN32)
             postgres/src/include/port/win32_msvc)
 endif()
 
-target_link_libraries(${TARGET_NAME}_loadable_extension ${OPENSSL_LIBRARIES})
+if(GSSAPI_LIBRARIES)
+  target_link_libraries(${TARGET_NAME}_loadable_extension ${OPENSSL_LIBRARIES} ${GSSAPI_LIBRARIES})
+else()
+  target_link_libraries(${TARGET_NAME}_loadable_extension ${OPENSSL_LIBRARIES})
+endif()
 set_property(TARGET ${TARGET_NAME}_loadable_extension PROPERTY C_STANDARD 99)
 
 if(WIN32)

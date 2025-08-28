@@ -2,12 +2,6 @@
 #include "storage/postgres_schema_entry.hpp"
 #include "storage/postgres_transaction.hpp"
 #include "postgres_type_oids.hpp"
-#include <cstdlib>
-#include <cstring>
-
-#ifdef HAVE_GSSAPI
-#include <gssapi/gssapi.h>
-#endif
 
 namespace duckdb {
 
@@ -15,113 +9,12 @@ static void PGNoticeProcessor(void *arg, const char *message) {
 }
 
 PGconn *PostgresUtils::PGConnect(const string &dsn) {
-	// Debug: Log the connection string being used
-	fprintf(stderr, "[DEBUG] PGConnect: Attempting connection with DSN: %s\n", dsn.c_str());
-	fprintf(stderr, "[DEBUG] PGConnect: DSN length: %zu bytes\n", dsn.length());
-	
-	// Debug: Test connection string parsing before actual connection
-	PQconninfoOption *connOptions = PQconninfoParse(dsn.c_str(), NULL);
-	if (connOptions) {
-		fprintf(stderr, "[DEBUG] PGConnect: Connection string parsing succeeded\n");
-		for (PQconninfoOption *option = connOptions; option->keyword != NULL; option++) {
-			if (option->val != NULL) {
-				fprintf(stderr, "[DEBUG] PGConnect: Parsed param '%s' = '%s'\n", option->keyword, option->val);
-			}
-		}
-		PQconninfoFree(connOptions);
-	} else {
-		fprintf(stderr, "[DEBUG] PGConnect: ERROR: Connection string parsing FAILED!\n");
-	}
-	
-	// Debug: Check for Kerberos credential cache
-	const char* krb5ccname = getenv("KRB5CCNAME");
-	fprintf(stderr, "[DEBUG] PGConnect: KRB5CCNAME environment: %s\n", krb5ccname ? krb5ccname : "(not set)");
-	
-	// Check if we can access default credential cache
-	system("klist -s 2>/dev/null && echo '[DEBUG] Kerberos: Valid tickets found' || echo '[DEBUG] Kerberos: No valid tickets or cache access failed'");
-	
-	// Debug: Check if libpq was compiled with GSSAPI support
-	fprintf(stderr, "[DEBUG] PGConnect: Checking libpq GSSAPI support...\n");
-	
-#ifdef HAVE_GSSAPI
-	fprintf(stderr, "[DEBUG] PGConnect: HAVE_GSSAPI is defined - extension compiled with GSSAPI\n");
-#else
-	fprintf(stderr, "[DEBUG] PGConnect: HAVE_GSSAPI NOT defined - extension compiled WITHOUT GSSAPI\n");
-#endif
-
-	// Debug: Check if GSSAPI symbols are available at runtime
-	fprintf(stderr, "[DEBUG] PGConnect: Testing GSSAPI symbol availability...\n");
-	
-#ifdef HAVE_GSSAPI
-	// Try a simple GSSAPI call to verify library linkage
-	OM_uint32 major_status, minor_status;
-	gss_buffer_desc name_buffer = GSS_C_EMPTY_BUFFER;
-	gss_name_t gss_name = GSS_C_NO_NAME;
-	
-	name_buffer.value = (void*)"test@EXAMPLE.COM";
-	name_buffer.length = strlen((char*)name_buffer.value);
-	
-	major_status = gss_import_name(&minor_status, &name_buffer, GSS_C_NT_USER_NAME, &gss_name);
-	
-	if (major_status == GSS_S_COMPLETE) {
-		fprintf(stderr, "[DEBUG] PGConnect: GSSAPI symbols working - gss_import_name succeeded\n");
-		gss_release_name(&minor_status, &gss_name);
-	} else {
-		fprintf(stderr, "[DEBUG] PGConnect: GSSAPI symbols FAILED - gss_import_name error: major=%u, minor=%u\n", 
-		        major_status, minor_status);
-	}
-#else
-	fprintf(stderr, "[DEBUG] PGConnect: GSSAPI test skipped - not compiled with GSSAPI support\n");
-#endif
-	
 	PGconn *conn = PQconnectdb(dsn.c_str());
-
-	// Debug: Log connection status and details
-	if (conn) {
-		fprintf(stderr, "[DEBUG] PGConnect: Connection status: %d (%s)\n", PQstatus(conn), 
-		        PQstatus(conn) == CONNECTION_OK ? "OK" : "BAD");
-		fprintf(stderr, "[DEBUG] PGConnect: Connection user: '%s'\n", PQuser(conn) ? PQuser(conn) : "(null)");
-		fprintf(stderr, "[DEBUG] PGConnect: Connection host: '%s'\n", PQhost(conn) ? PQhost(conn) : "(null)");
-		fprintf(stderr, "[DEBUG] PGConnect: Connection port: '%s'\n", PQport(conn) ? PQport(conn) : "(null)");
-		fprintf(stderr, "[DEBUG] PGConnect: Connection db: '%s'\n", PQdb(conn) ? PQdb(conn) : "(null)");
-		
-		// Debug: Check GSSAPI-related connection options
-		const char *gsslib = PQparameterStatus(conn, "gsslib");
-		const char *gss_delegated_creds = PQparameterStatus(conn, "gss_delegated_creds");
-		fprintf(stderr, "[DEBUG] PGConnect: GSSAPI lib: '%s'\n", gsslib ? gsslib : "(null)");
-		fprintf(stderr, "[DEBUG] PGConnect: GSS delegated creds: '%s'\n", gss_delegated_creds ? gss_delegated_creds : "(null)");
-	}
 
 	// both PQStatus and PQerrorMessage check for nullptr
 	if (PQstatus(conn) == CONNECTION_BAD) {
-		// Debug: Log detailed error information
-		fprintf(stderr, "[DEBUG] PGConnect: Connection failed with detailed error: %s\n", PQerrorMessage(conn));
-		
-		// Debug: Analyze error type
-		string error_msg = string(PQerrorMessage(conn));
-		if (error_msg.find("no PostgreSQL user name specified") != string::npos) {
-			fprintf(stderr, "[DEBUG] PGConnect: ERROR ANALYSIS: Missing username in startup packet\n");
-			fprintf(stderr, "[DEBUG] PGConnect: LIKELY CAUSE: GSSAPI not being used, falling back to regular auth\n");
-			fprintf(stderr, "[DEBUG] PGConnect: SOLUTION: Ensure gssencmode=require and valid Kerberos ticket\n");
-		} else if (error_msg.find("encryption required") != string::npos) {
-			fprintf(stderr, "[DEBUG] PGConnect: ERROR ANALYSIS: GSSAPI encryption required but failed\n");
-			fprintf(stderr, "[DEBUG] PGConnect: LIKELY CAUSE: No Kerberos credentials or server doesn't support GSSAPI\n");
-			fprintf(stderr, "[DEBUG] PGConnect: SOLUTION: Run 'kinit user@REALM' to get Kerberos ticket\n");
-		} else if (error_msg.find("GSSAPI") != string::npos || error_msg.find("GSS") != string::npos) {
-			fprintf(stderr, "[DEBUG] PGConnect: ERROR ANALYSIS: GSSAPI authentication error\n");
-			fprintf(stderr, "[DEBUG] PGConnect: Check Kerberos configuration and server setup\n");
-		}
-		
 		throw IOException("Unable to connect to Postgres at %s: %s", dsn, string(PQerrorMessage(conn)));
 	}
-	
-	fprintf(stderr, "[DEBUG] PGConnect: Connection successful\n");
-	
-	// Debug: Check server version for comparison
-	int server_version = PQserverVersion(conn);
-	fprintf(stderr, "[DEBUG] PGConnect: Server PostgreSQL version: %d\n", server_version);
-	fprintf(stderr, "[DEBUG] PGConnect: Client libpq version: %d\n", PQlibVersion());
-	
 	PQsetNoticeProcessor(conn, PGNoticeProcessor, nullptr);
 	return conn;
 }
